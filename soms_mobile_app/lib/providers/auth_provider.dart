@@ -6,7 +6,12 @@ import '../core/api_client.dart';
 import '../core/secure_storage.dart';
 import '../models/user.dart';
 
-enum AuthStatus { bootstrapping, unauthenticated, needsPasswordChange, authenticated }
+enum AuthStatus {
+  bootstrapping,
+  unauthenticated,
+  needsPasswordChange,
+  authenticated
+}
 
 class AuthState {
   const AuthState({required this.status, this.user, this.errorMessage});
@@ -15,7 +20,9 @@ class AuthState {
   final AppUser? user;
   final String? errorMessage;
 
-  AuthState copyWith({AuthStatus? status, AppUser? user, String? errorMessage}) => AuthState(
+  AuthState copyWith(
+          {AuthStatus? status, AppUser? user, String? errorMessage}) =>
+      AuthState(
         status: status ?? this.status,
         user: user ?? this.user,
         errorMessage: errorMessage,
@@ -59,14 +66,17 @@ class AuthController extends StateNotifier<AuthState> {
 
     final user = AppUser.fromJson(jsonDecode(userJson) as Map<String, dynamic>);
     state = AuthState(
-      status: user.mustChangePassword ? AuthStatus.needsPasswordChange : AuthStatus.authenticated,
+      status: user.mustChangePassword
+          ? AuthStatus.needsPasswordChange
+          : AuthStatus.authenticated,
       user: user,
     );
   }
 
   /// POST /api/v1/auth/login — see 10-Mobile-Deployment.md Part B.
   Future<void> login(String studentId, String password) async {
-    state = state.copyWith(status: AuthStatus.unauthenticated, errorMessage: null);
+    state =
+        state.copyWith(status: AuthStatus.unauthenticated, errorMessage: null);
     try {
       final res = await _api.post('/auth/login', data: {
         'student_id': studentId,
@@ -81,13 +91,39 @@ class AuthController extends StateNotifier<AuthState> {
       await SecureStorage.instance.saveUserJson(jsonEncode(user.toJson()));
 
       state = AuthState(
-        status: user.mustChangePassword ? AuthStatus.needsPasswordChange : AuthStatus.authenticated,
+        status: user.mustChangePassword
+            ? AuthStatus.needsPasswordChange
+            : AuthStatus.authenticated,
         user: user,
       );
     } on ApiException catch (e) {
-      state = AuthState(status: AuthStatus.unauthenticated, errorMessage: e.message);
+      state = AuthState(
+          status: AuthStatus.unauthenticated, errorMessage: e.message);
       rethrow;
     }
+  }
+
+  /// POST /api/v1/auth/register — student self-registration. No token is
+  /// issued (see RegisterController): the account is created with
+  /// is_approved=false and must wait on an Admin to approve it, so this
+  /// deliberately does not touch AuthState — the caller just shows a
+  /// "pending approval" message and returns to the login screen.
+  Future<void> register({
+    required String name,
+    required String studentId,
+    required String email,
+    required String department,
+    required String program,
+    required String level,
+  }) async {
+    await _api.post('/auth/register', data: {
+      'name': name,
+      'student_id': studentId,
+      'email': email,
+      'department': department,
+      'program': program,
+      'level': level,
+    });
   }
 
   /// POST /api/v1/auth/change-password — required before any dashboard
@@ -125,6 +161,8 @@ class AuthController extends StateNotifier<AuthState> {
   /// (the token is already invalid server-side).
   Future<void> forceLogout() async {
     await SecureStorage.instance.clearAll();
-    state = const AuthState(status: AuthStatus.unauthenticated, errorMessage: 'Session expired. Please log in again.');
+    state = const AuthState(
+        status: AuthStatus.unauthenticated,
+        errorMessage: 'Session expired. Please log in again.');
   }
 }

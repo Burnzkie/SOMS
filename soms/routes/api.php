@@ -13,6 +13,15 @@ use Illuminate\Support\Facades\Route;
  * { success, data, message } / { success:false, message, errors }.
  */
 Route::prefix('v1')->middleware('throttle:api')->group(function () {
+    // Public — feeds the mobile registration form's department/program
+    // dropdowns from the same config/academic_programs.php the web
+    // registration blade and RegisterRequest's validation already use, so
+    // there's one source of truth instead of a second hardcoded copy.
+    Route::get('/academic-programs', fn () => response()->json([
+        'success' => true,
+        'data' => config('academic_programs', []),
+    ]));
+
     Route::post('/auth/login', [LoginController::class, 'login']);
     Route::post('/auth/register', [RegisterController::class, 'register']);
     Route::post('/auth/forgot-password', [ForgotPasswordController::class, 'sendResetLink'])
