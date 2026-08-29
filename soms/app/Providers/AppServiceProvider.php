@@ -14,6 +14,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 
@@ -52,5 +53,13 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api', fn (Request $r) => Limit::perMinute(120)->by($r->user()?->id ?: $r->ip()));
         RateLimiter::for('password-reset', fn (Request $r) => Limit::perMinute(3)->by($r->ip()));
         RateLimiter::for('scan', fn (Request $r) => Limit::perMinute(60)->by($r->user()?->id ?: $r->ip()));
+
+        // Render terminates SSL upstream and forwards over plain HTTP, so
+        // without trustProxies (bootstrap/app.php) + this, Laravel generates
+        // http:// URLs (form actions, asset(), route()) and Chrome flags
+        // login/forms as "not secure". See 03-Auth-Security.md.
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
     }
 }
