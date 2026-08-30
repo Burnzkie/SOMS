@@ -74,7 +74,11 @@ return [
             'url' => env('R2_PUBLIC_URL'),
             'endpoint' => env('R2_ENDPOINT'),
             'use_path_style_endpoint' => true,
-            'throw' => false,
+            // TEMP: true so the real S3/R2 error surfaces in logs instead
+            // of being silently swallowed. Flip back to false once uploads
+            // are confirmed working — see 10-Mobile-Deployment.md notes on
+            // why 'public' silently failed under Render's ephemeral disk.
+            'throw' => true,
             'report' => false,
         ],
 
