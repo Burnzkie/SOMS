@@ -45,6 +45,14 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Password changed. Please log in again.')),
         );
+        // No-op when this screen is AuthGate's root during forced onboarding
+        // (canPop is false there — AuthGate swaps the screen automatically
+        // once authProvider's state flips to unauthenticated). When reused
+        // from Settings (pushed on top of an authenticated screen), this
+        // pops back to reveal the LoginScreen AuthGate already swapped in.
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
       }
     } on ApiException catch (e) {
       setState(() => _errorText = e.message);

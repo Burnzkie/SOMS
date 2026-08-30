@@ -21,8 +21,13 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1
 
 # Physical device -> use your machine's LAN IP instead, e.g.:
 flutter run --dart-define=API_BASE_URL=http://192.168.1.50:8000/api/v1
+flutter run --dart-define=API_BASE_URL=https://soms-zlyx.onrender.com/api/v1
 ```
 
+# To Connect your device
+ & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" connect 192.168.137.135:
+
+ 
 Make sure `php artisan serve --host=0.0.0.0` is running (not just
 `--host=127.0.0.1`) so the emulator/device can actually reach it, and that
 `CORS_ALLOWED_ORIGINS` in your `.env` doesn't block it (mobile uses Bearer

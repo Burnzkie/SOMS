@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\AvatarController;
 use App\Http\Controllers\Api\NotificationController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\ProfileController;
+
 
 /**
  * See 10-Mobile-Deployment.md Part B for the response format convention:
@@ -55,6 +57,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
             // /login with zero visible error. Flutter isn't affected by this
             // rename since it calls the literal URL string, never Laravel's
             // route() helper.
+            Route::get('/profile', [ProfileController::class, 'show']);
+            Route::put('/profile', [ProfileController::class, 'update']);
             Route::name('api.')->group(function () {
                 Route::apiSingleton('avatar', AvatarController::class)
                     ->creatable()
