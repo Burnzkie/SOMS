@@ -40,3 +40,10 @@
         </a>
     @endif
 </div>
+
+<div class="nav-group">
+    <a href="{{ route('settings.profile.edit') }}" class="nav-link @if(request()->routeIs('settings.*')) active @endif">
+        <span class="ic"></span>
+        Settings
+    </a>
+</div>

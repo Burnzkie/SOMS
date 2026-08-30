@@ -59,9 +59,47 @@
   </form>
 </div>
 
-<p class="auth-foot" style="margin-top:16px;">
+<p class="auth-foot" style="margin-top:16px; text-align:left;">
   <a href="{{ route('change-password.show') }}">Change password →</a>
 </p>
+
+<style>
+/* Scoped to this page — .field/.field-error/.alert/.auth-foot only exist
+   in guest.blade.php's <style> (login/register/change-password), not in
+   the app-shell layout this page uses, so they're redefined here rather
+   than left unstyled. Same design tokens (--primary, --rose, etc.) as
+   the rest of the app, so it matches visually. */
+.field{ margin-bottom:16px; }
+.field label{
+  display:block; font-size:12px; font-weight:600;
+  color:var(--text-muted); margin-bottom:6px;
+}
+.field input{
+  width:100%; height:42px; border-radius:var(--radius-sm);
+  border:1px solid var(--border-strong); background:var(--surface-2);
+  color:var(--text); padding:0 12px; font-size:13px;
+  font-family:var(--font-ui); outline:none; transition:border-color .2s;
+}
+.field input:focus{ border-color:var(--primary); }
+.field input::placeholder{ color:var(--text-faint); }
+.field-error{ color:var(--rose); font-size:12px; margin-top:6px; }
+
+.alert{
+  padding:12px 14px; border-radius:var(--radius-md);
+  font-size:12.5px; margin-bottom:18px;
+}
+.alert-success{
+  background:rgba(31,201,141,.14); color:var(--emerald);
+  border:1px solid rgba(31,201,141,.3);
+}
+.alert-error{
+  background:rgba(245,73,122,.14); color:var(--rose);
+  border:1px solid rgba(245,73,122,.3);
+}
+
+.auth-foot{ font-size:12px; color:var(--text-muted); }
+.auth-foot a{ color:var(--primary); font-weight:600; }
+</style>
 
 @endslot
 
