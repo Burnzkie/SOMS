@@ -72,6 +72,12 @@ class OfficerAppointmentController extends Controller
         $org = Organization::first();
 
         abort_if(
+            $org === null,
+            500,
+            'No organization record exists yet. Run: php artisan db:seed --class=AdminSeeder (or DevSeeder locally) to create one before appointing officers.'
+        );
+
+        abort_if(
             OfficerPosition::where('position_title', $data['position_title'])
                 ->where('academic_year', $data['academic_year'])
                 ->where('is_active', true)

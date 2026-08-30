@@ -5,6 +5,7 @@
 namespace Database\Seeders;
 
 use App\Models\ActivityLog;
+use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -30,6 +31,27 @@ class AdminSeeder extends Seeder
 {
     public function run(): void
     {
+        // DevSeeder creates this too, but DevSeeder refuses to run in
+        // production — so without this, organizations stays empty in any
+        // real deployment. OfficerAppointmentController::store() reads
+        // Organization::first() and writes it into officer_positions.
+        // organization_id, which is a required (non-nullable) foreign key
+        // — so a missing Organization row crashes every officer
+        // appointment with a 500. firstOrCreate keeps this safe to run
+        // alongside the idempotent admin-creation logic below.
+        Organization::firstOrCreate(
+            ['name' => 'Student Government Organization'],
+            [
+                'description'   => 'Philippine Advent College — Student Government Organization',
+                'logo'          => null,
+                'department'    => 'All Departments',
+                'academic_year' => now()->month >= 6
+                    ? now()->year . '-' . (now()->year + 1)
+                    : (now()->year - 1) . '-' . now()->year,
+                'is_active'     => true,
+            ]
+        );
+
         $studentId = env('ADMIN_STUDENT_ID', 'A0000000001');
         $email     = env('ADMIN_EMAIL', 'admin@soms.local');
 
