@@ -720,6 +720,7 @@ td.empty-note{
         <div class="who">
           <b>{{ auth()->user()->name ?? '' }}</b>
           <span>{{ auth()->user()->student_id ?? '' }}</span>
+          <a href="{{ route('settings.profile.edit') }}" class="avatar-remove-link" style="display:inline-block; margin-top:2px;">Settings</a>
           @error('avatar')
           <div style="color:var(--rose); font-size:10.5px; margin-top:4px;">{{ $message }}</div>
           @enderror

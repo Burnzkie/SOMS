@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -54,6 +55,12 @@ Route::middleware(['auth', 'must.change.password'])->group(function () {
         ->creatable()
         ->except(['create', 'edit'])
         ->middleware('throttle:6,1');
+
+    // Self-only personal info — every role, no target-user param. Sits
+    // alongside avatar above; password change already exists separately
+    // (see /change-password near top of file) and isn't duplicated here.
+    Route::get('/settings/profile', [ProfileController::class, 'edit'])->name('settings.profile.edit');
+    Route::put('/settings/profile', [ProfileController::class, 'update'])->name('settings.profile.update');
 
     Route::prefix('admin')->middleware('role:admin')->group(fn () => require base_path('routes/admin.php'));
     Route::prefix('officer')->middleware('role:officer')->group(fn () => require base_path('routes/officer.php'));
