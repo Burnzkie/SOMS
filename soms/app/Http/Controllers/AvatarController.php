@@ -45,7 +45,7 @@ class AvatarController extends Controller
             'success' => true,
             'data' => [
                 'has_avatar' => (bool) $user->avatar_path,
-                'avatar_url' => $user->avatar_path ? Storage::disk('public')->url($user->avatar_path) : null,
+                'avatar_url' => $user->avatar_path ? Storage::disk('r2')->url($user->avatar_path) : null,
             ],
         ]);
     }
@@ -82,7 +82,7 @@ class AvatarController extends Controller
             'avatar' => ['required', 'file', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
         ]);
 
-        $newPath = SafeImageUpload::store($request->file('avatar'), 'public', 'avatars');
+        $newPath = SafeImageUpload::store($request->file('avatar'), 'r2', 'avatars');
 
         $user->forceFill(['avatar_path' => $newPath])->save();
 
@@ -112,11 +112,11 @@ class AvatarController extends Controller
 
         $oldPath = $user->avatar_path;
 
-        $newPath = SafeImageUpload::store($request->file('avatar'), 'public', 'avatars');
+        $newPath = SafeImageUpload::store($request->file('avatar'), 'r2', 'avatars');
 
         $user->forceFill(['avatar_path' => $newPath])->save();
 
-        Storage::disk('public')->delete($oldPath);
+        Storage::disk('r2')->delete($oldPath);
 
         ActivityLog::record($user->id, 'avatar_updated', User::class, $user->id);
 
@@ -139,7 +139,7 @@ class AvatarController extends Controller
             return back()->with('status', "You don't have a photo to remove.");
         }
 
-        Storage::disk('public')->delete($user->avatar_path);
+        Storage::disk('r2')->delete($user->avatar_path);
         $user->forceFill(['avatar_path' => null])->save();
 
         ActivityLog::record($user->id, 'avatar_removed', User::class, $user->id);

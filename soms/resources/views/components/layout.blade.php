@@ -711,7 +711,7 @@ td.empty-note{
           @csrf
           @if(auth()->user()->avatar_path)
             @method('PUT')
-            <img src="{{ Storage::disk('public')->url(auth()->user()->avatar_path) }}" alt="{{ auth()->user()->name }}">
+            <img src="{{ Storage::disk('r2')->url(auth()->user()->avatar_path) }}" alt="{{ auth()->user()->name }}">
           @else
             <div class="avatar"></div>
           @endif
