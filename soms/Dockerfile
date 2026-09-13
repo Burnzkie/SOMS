@@ -47,6 +47,20 @@ COPY --from=vendor /app/vendor ./vendor
 RUN php artisan config:clear \
     && chown -R www-data:www-data storage bootstrap/cache
 
+# Deploy-readiness fix (Sep 2026): the base dunglas/frankenphp image applies
+# `setcap cap_net_bind_service=+ep` to the frankenphp binary at build time,
+# so it can bind privileged ports (80/443) without running as root. Render's
+# sandboxed runtime can't execute a binary carrying that capability at all —
+# it fails the container with "frankenphp: Operation not permitted" (exit
+# 126) before Caddy/FrankenPHP's own code ever runs. We don't need the
+# capability anyway: Render injects a non-privileged $PORT (e.g. 10000) and
+# the Caddyfile binds to :{$PORT}, well above 1024. Stripping it is the
+# documented way to run FrankenPHP with zero capabilities on a non-
+# privileged port (https://frankenphp.dev/docs/docker/#running-with-no-capabilities).
+RUN apk add --no-cache libcap \
+    && setcap -r /usr/local/bin/frankenphp \
+    && apk del libcap
+
 COPY docker/Caddyfile /etc/caddy/Caddyfile
 COPY docker/start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
