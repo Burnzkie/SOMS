@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -40,6 +42,25 @@ class User extends Authenticatable
         'remember_token',
         'fcm_token',
     ];
+
+    // Fix (Sep 2026) — the admin User Management screen (both web and
+    // mobile) only ever showed an initial-letter/gradient placeholder,
+    // never the actual uploaded photo. `avatar_path` alone isn't useful to
+    // API consumers (it's a raw R2 storage key, not a URL, and building
+    // the URL requires knowing the R2 disk config) — appending a proper
+    // `avatar_url` here means every endpoint that serializes a User (the
+    // admin users list included) gets a ready-to-use URL for free, instead
+    // of each controller reinventing Storage::disk('r2')->url(...) --
+    // AvatarController already did this manually for its own single-user
+    // responses; this generalizes it.
+    protected $appends = ['avatar_url'];
+
+    protected function avatarUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->avatar_path ? Storage::disk('r2')->url($this->avatar_path) : null,
+        );
+    }
 
     protected $casts = [
         'email_verified_at'    => 'datetime',

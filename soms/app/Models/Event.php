@@ -15,6 +15,8 @@ class Event extends Model
         'description',
         'venue',
         'type',
+        'image_path',
+        'color',
         'date_start',
         'date_end',
         'has_parade',
@@ -27,6 +29,20 @@ class Event extends Model
         'has_parade'   => 'boolean',
         'is_published' => 'boolean',
     ];
+
+    protected $appends = ['image_url'];
+
+    /**
+     * Full R2 URL for the event's cover image, or null if none was
+     * uploaded. Appended to JSON output so the Flutter app gets it for
+     * free without a second lookup.
+     */
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->image_path
+            ? \Illuminate\Support\Facades\Storage::disk('r2')->url($this->image_path)
+            : null;
+    }
 
     public function organization(): BelongsTo
     {

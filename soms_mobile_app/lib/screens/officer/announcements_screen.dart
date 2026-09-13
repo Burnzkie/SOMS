@@ -137,7 +137,10 @@ class _AnnouncementTile extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: announcement.isPublished ? Colors.green : Colors.orange,
+                  // Accessibility fix (Sep 2026) — Colors.green/.orange as
+                  // text measured 2.78:1 / 2.16:1 on white, under WCAG AA's
+                  // 4.5:1. Same darker variants used elsewhere in this app.
+                  color: announcement.isPublished ? const Color(0xFF39843C) : const Color(0xFFA86400),
                 ),
               ),
       ),

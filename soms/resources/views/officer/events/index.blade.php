@@ -22,6 +22,7 @@
     <table class="data-table">
       <thead>
         <tr>
+          <th></th>
           <th>Title</th>
           <th>Type</th>
           <th>Dates</th>
@@ -33,6 +34,13 @@
       <tbody>
         @forelse($events as $event)
         <tr>
+          <td style="width:52px;">
+            @if($event->image_url)
+            <img src="{{ $event->image_url }}" alt="" style="width:40px; height:40px; object-fit:cover; border-radius:var(--radius-sm); display:block;">
+            @else
+            <div style="width:40px; height:40px; border-radius:var(--radius-sm); background:var(--surface-2);"></div>
+            @endif
+          </td>
           <td>{{ $event->title }}</td>
           <td>{{ $event->type === 'foundation_day' ? 'Foundation Day' : 'Other' }}</td>
           <td>{{ $event->date_start->format('M j') }} – {{ $event->date_end->format('M j, Y') }}</td>
@@ -41,7 +49,7 @@
           <td><a href="{{ route('officer.events.show', $event) }}" class="link-sm">Manage</a></td>
         </tr>
         @empty
-        <tr><td colspan="6" class="empty-note" style="padding:16px 8px;">No events yet.</td></tr>
+        <tr><td colspan="7" class="empty-note" style="padding:16px 8px;">No events yet.</td></tr>
         @endforelse
       </tbody>
     </table>

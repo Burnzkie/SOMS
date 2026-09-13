@@ -1,0 +1,18 @@
+# Copy this file to android/key.properties (NOT committed -- already in
+# android/.gitignore) and fill in real values to enable real release
+# signing instead of falling back to the debug keystore.
+#
+# Generate a keystore once (keep the .jks file and these passwords safe --
+# losing them means you can never publish an update under the same app
+# identity again):
+#
+#   keytool -genkey -v -keystore soms-release.jks -keyalg RSA -keysize 2048 \
+#     -validity 10000 -alias soms
+#
+# Then point storeFile at wherever you keep that .jks (an absolute path,
+# or a path relative to android/app/).
+
+storeFile=/absolute/path/to/soms-release.jks
+storePassword=REPLACE_ME
+keyAlias=soms
+keyPassword=REPLACE_ME

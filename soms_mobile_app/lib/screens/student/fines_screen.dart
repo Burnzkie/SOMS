@@ -98,6 +98,14 @@ class _FineTile extends StatelessWidget {
       'waived' => Colors.blueGrey,
       _ => Colors.orange,
     };
+    // Accessibility fix (Sep 2026) — see officer/fines_screen.dart's
+    // _FineTile for the contrast-ratio rationale; same fix here since this
+    // widget duplicates that one rather than sharing it.
+    final textColor = switch (fine.status) {
+      'paid' => const Color(0xFF39843C),
+      'waived' => const Color(0xFF5C7885),
+      _ => const Color(0xFFA86400),
+    };
 
     return Card(
       child: ListTile(
@@ -112,7 +120,7 @@ class _FineTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text('₱${fine.amount.toStringAsFixed(2)}', style: Theme.of(context).textTheme.titleSmall),
-            Text(fine.status, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+            Text(fine.status, style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.bold)),
           ],
         ),
       ),

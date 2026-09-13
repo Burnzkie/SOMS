@@ -58,11 +58,16 @@ return [
             'ignore_exceptions' => false,
         ],
 
+        // Roadmap Phase 1.2 — 'tap' runs after the channel is built, letting
+        // us push a Monolog processor onto it without touching the driver
+        // config. Applied to 'single' and 'daily' since LOG_CHANNEL/LOG_STACK
+        // can point at either depending on env.
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
+            'tap' => [\App\Logging\TapWithRedaction::class],
         ],
 
         'daily' => [
@@ -71,6 +76,7 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
+            'tap' => [\App\Logging\TapWithRedaction::class],
         ],
 
         'slack' => [

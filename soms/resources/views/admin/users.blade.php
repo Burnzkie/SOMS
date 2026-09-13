@@ -45,7 +45,19 @@
                 <tr>
                     <td>
                         <div class="user-cell">
-                            <span class="avatar-sm"></span>
+                            {{-- Fix (Sep 2026) -- this was a bare <span
+                                 class="avatar-sm"></span> with no image
+                                 logic at all, so it always rendered as the
+                                 plain gradient placeholder even for users
+                                 with an uploaded photo. Same avatar_path ->
+                                 R2 URL pattern already used for the header
+                                 avatar (see components/layout.blade.php). --}}
+                            @if($user->avatar_url)
+                                <img src="{{ $user->avatar_url }}"
+                                     alt="{{ $user->name }}" class="avatar-sm" style="object-fit:cover;">
+                            @else
+                                <span class="avatar-sm"></span>
+                            @endif
                             <div>
                                 <div>{{$user->name}}</div>
                                 <div class="sub">{{$user->student_id}}</div>

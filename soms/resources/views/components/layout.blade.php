@@ -1,9 +1,10 @@
 @props(['title' => 'Dashboard'])
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <title>{{ $title }} — SOMS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Inter+Tight:wght@600;700;800&display=swap" rel="stylesheet">
@@ -13,16 +14,30 @@
   --ease:cubic-bezier(.4,0,.2,1);
   --font-ui:'Inter',system-ui,sans-serif;
   --font-display:'Inter Tight','Inter',system-ui,sans-serif;
-  --primary:#5B5BF6; --violet:#9B5CF6;
-  --primary-soft:rgba(91,91,246,.14);
-  --emerald:#1FC98D; --emerald-soft:rgba(31,201,141,.14);
-  --amber:#F5A623; --amber-soft:rgba(245,166,35,.14);
-  --rose:#F5497A; --rose-soft:rgba(245,73,122,.14);
-  --bg:#0A0B10; --bg-elevated:#11131C; --surface:#15171F; --surface-2:#1B1E29;
-  --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.14);
-  --text:#EDEEF4; --text-muted:#8C90A3; --text-faint:#5C6075;
-  --shadow-sm: 0 2px 8px rgba(0,0,0,.3);
-  --shadow-md: 0 8px 24px rgba(0,0,0,.4);
+
+  /* "Lively" light-first palette (Sept 2026 redesign) — vivid blue primary
+     against light content, dark navy reserved for the sidebar/chrome only
+     (see the .sidebar block below, which locally re-scopes these same
+     variable names to on-dark equivalents via CSS custom-property
+     cascading — every component that reads var(--text-muted) etc. picks
+     up the right value automatically depending on whether it's inside
+     the sidebar or the main content area, with zero per-component
+     changes needed). */
+  --primary:#2563EB; --violet:#4F7DF3;
+  --primary-soft:rgba(37,99,235,.12);
+  --purple:#8B5CF6; --purple-soft:rgba(139,92,246,.12);
+  --emerald:#10B981; --emerald-soft:rgba(16,185,129,.12);
+  --amber:#F59E0B; --amber-soft:rgba(245,158,11,.12);
+  --rose:#F43F5E; --rose-soft:rgba(244,63,94,.12);
+  /* Accessibility audit (Sep 2026) — see resources/views/layouts/app.blade.php
+     for the contrast-ratio rationale. Same fix, duplicated here since this
+     file re-declares the same palette rather than sharing it. */
+  --emerald-text:#0B7C56; --amber-text:#996206; --rose-text:#D00C2E;
+  --bg:#F4F6FB; --bg-elevated:#0B1330; --surface:#FFFFFF; --surface-2:#F1F4FA;
+  --border:rgba(15,23,42,.08); --border-strong:rgba(15,23,42,.14);
+  --text:#0F172A; --text-muted:#64748B; --text-faint:#94A3B8;
+  --shadow-sm: 0 1px 2px rgba(15,23,42,.05), 0 1px 1px rgba(15,23,42,.04);
+  --shadow-md: 0 12px 28px -10px rgba(15,23,42,.16);
 }
 *{box-sizing:border-box;}
 html{
@@ -101,6 +116,18 @@ table{ max-width: 100%;}
   flex-direction: column;
   padding:22px 16px; 
   flex-shrink: 0;
+  /* Sidebar chrome stays dark navy even though the rest of the app is now
+     light — re-scoping these variable names locally (rather than adding
+     new ones) means every existing rule below that reads var(--text),
+     var(--text-muted), var(--surface), var(--border) etc. automatically
+     renders correctly on dark, with no per-selector changes needed. */
+  --surface: rgba(255,255,255,.05);
+  --surface-2: rgba(255,255,255,.09);
+  --border: rgba(255,255,255,.10);
+  --border-strong: rgba(255,255,255,.20);
+  --text: #F3F5FC;
+  --text-muted: #97A3C4;
+  --text-faint: #6B77A0;
 }
 .sidebar-brand{
   display:flex;
@@ -109,15 +136,23 @@ table{ max-width: 100%;}
   padding:0 8px 24px;
 }
 .sidebar-brand .mark{
-  width:32px;
-  height:32px;
+  width:34px;
+  height:34px;
   border-radius: 9px;
-  background: linear-gradient(135deg, var(--primary), var(--violet));
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   flex-shrink:0;
+  object-fit: cover;
+  display:block;
 }
 .sidebar-brand b{
   font-size: 15px;
   font-family:var(--font-display);
+  /* Fix (Sep 2026) — same bug as .who-row .who b: no color declared, so
+     this inherited the page's dark-navy computed color instead of the
+     sidebar's re-scoped --text. The "Admin/Officer workspace" span right
+     below it was fine because it explicitly references var(--text-faint). */
+  color: var(--text);
 }
 .sidebar-brand span{
   display:block;
@@ -149,12 +184,22 @@ table{ max-width: 100%;}
   cursor:pointer;
 }
 .nav-link .ic{
-  width:18px;
-  height:18px;
-  border-radius:5px;
+  width:22px;
+  height:22px;
+  border-radius:6px;
   background:var(--surface-2);
   flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12.5px;
+  line-height:1;
 }
+.nav-link .ic.orange{ background:var(--primary-soft); }
+.nav-link .ic.purple{ background:var(--purple-soft); }
+.nav-link .ic.green{ background:var(--emerald-soft); }
+.nav-link .ic.amber{ background:var(--amber-soft); }
+.nav-link .ic.rose{ background:var(--rose-soft); }
 .nav-link:hover{
   background:var(--surface-2);
   color: var(--text);
@@ -199,6 +244,14 @@ margin:4px 0 18px;
 .who-row .who b{
   display:block;
   font-size:13px;
+  /* Fix (Sep 2026) — this had no color at all, so it inherited the
+     already-computed dark-navy color from the page body instead of the
+     sidebar's re-scoped --text (#F3F5FC). CSS inheritance passes down a
+     resolved value, not the var() expression -- only a rule that
+     explicitly references var(--text) itself re-resolves it against the
+     sidebar's local override, which is why the ID line below (which
+     already did this) was visible while the name wasn't. */
+  color: var(--text);
 }
 .who-row .who span{
   font-size: 11px;
@@ -265,7 +318,7 @@ margin:4px 0 18px;
   text-decoration-style:dotted;
   text-underline-offset:2px;
 }
-.avatar-remove-link:hover{ color:var(--rose); }
+.avatar-remove-link:hover{ color:var(--rose-text); }
 .logout-btn{
   width:100%;
   height:38px;
@@ -279,7 +332,7 @@ margin:4px 0 18px;
   cursor:pointer;
 }
 .logout-btn:hover{
-  color:var(--rose);
+  color:var(--rose-text);
   border-color:var(--rose);
 }
 .btn{
@@ -335,8 +388,8 @@ margin:4px 0 18px;
   font-family: var(--font-ui);
   white-space:nowrap;
 }
-.mini-btn.approve{ background: var(--emerald-soft); color: var(--emerald);}
-.mini-btn.reject{ background: var(--rose-soft); color: var(--rose);}
+.mini-btn.approve{ background: var(--emerald-soft); color: var(--emerald-text);}
+.mini-btn.reject{ background: var(--rose-soft); color: var(--rose-text);}
 
 .queue-actions{
   display:flex;
@@ -424,19 +477,157 @@ margin:4px 0 18px;
   border-radius:99px;
   white-space:nowrap;
 }
-.badge.approved{ background: var(--emerald-soft); color: var(--emerald);}
-.badge.pending{ background: var(--amber-soft); color: var(--amber);}
-.badge.paid{ background: var(--emerald-soft); color: var(--emerald);}
+.badge.approved{ background: var(--emerald-soft); color: var(--emerald-text);}
+.badge.pending{ background: var(--amber-soft); color: var(--amber-text);}
+.badge.paid{ background: var(--emerald-soft); color: var(--emerald-text);}
 .badge.waived{ background: var(--primary-soft); color: var(--primary);}
-.badge.unpaid{ background: var(--rose-soft); color: var(--rose);}
-.badge.flagged{ background: var(--rose-soft); color: var(--rose);}
-.badge.rejected{ background: var(--rose-soft); color: var(--rose);}
+.badge.unpaid{ background: var(--rose-soft); color: var(--rose-text);}
+.badge.flagged{ background: var(--rose-soft); color: var(--rose-text);}
+.badge.rejected{ background: var(--rose-soft); color: var(--rose-text);}
 
 .main{
   flex:1;
   padding:28px 32px;
   overflow-x: hidden;
   min-width:0;
+}
+.header-bar{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:12px;
+  margin-bottom:20px;
+}
+.header-search{
+  position:relative;
+  flex:1;
+  max-width:320px;
+}
+.header-search input{
+  width:100%;
+  height:40px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:var(--surface-2);
+  color:var(--text);
+  padding:0 14px 0 38px;
+  font-size:13px;
+}
+.header-search input::placeholder{ color:var(--text-faint); }
+.header-search input:focus{ outline:none; border-color:var(--border-strong); }
+.header-search .icon{
+  position:absolute;
+  left:12px;
+  top:50%;
+  transform:translateY(-50%);
+  color:var(--text-faint);
+  font-size:14px;
+  pointer-events:none;
+}
+.header-bell-wrap{
+  position:relative;
+  flex-shrink:0;
+}
+.header-bell{
+  position:relative;
+  width:40px;
+  height:40px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:var(--surface-2);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:16px;
+  color:var(--text-muted);
+  flex-shrink:0;
+  text-decoration:none;
+  cursor:pointer;
+  font-family:inherit;
+}
+.notif-dropdown{
+  display:none;
+  position:absolute;
+  top:calc(100% + 8px);
+  right:0;
+  width:300px;
+  max-height:360px;
+  overflow-y:auto;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+  box-shadow:var(--shadow-lg);
+  z-index:50;
+}
+.notif-dropdown.open{ display:block; }
+.notif-dropdown-head{
+  padding:12px 14px;
+  font-size:12px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  color:var(--text-faint);
+  border-bottom:1px solid var(--border);
+}
+.notif-item{
+  display:block;
+  padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  text-decoration:none;
+}
+.notif-item:last-child{ border-bottom:none; }
+.notif-item:hover{ background:var(--surface-2); }
+.notif-item b{
+  display:block;
+  font-size:13px;
+  color:var(--text);
+  margin-bottom:2px;
+}
+.notif-item span{
+  font-size:11.5px;
+  color:var(--text-faint);
+}
+.notif-empty{
+  padding:16px 14px;
+  font-size:12.5px;
+  color:var(--text-faint);
+  text-align:center;
+}
+.header-bell .badge{
+  position:absolute;
+  top:-6px;
+  right:-6px;
+  min-width:18px;
+  height:18px;
+  padding:0 4px;
+  border-radius:99px;
+  background:var(--primary);
+  color:#fff;
+  font-size:10.5px;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.header-avatar{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  overflow:hidden;
+  border:1px solid var(--border);
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--surface-2);
+  color:var(--text-muted);
+  font-weight:700;
+  font-size:14px;
+  text-decoration:none;
+}
+.header-avatar img{ width:100%; height:100%; object-fit:cover; }
+@media (max-width: 640px){
+  .header-search{ display:none; }
 }
 .topbar{
   display:flex;
@@ -462,19 +653,32 @@ margin:4px 0 18px;
   font-weight: 600;
   margin-bottom:20px;
 }
+.banner-dismiss{
+  margin-left:auto;
+  background:none;
+  border:none;
+  color:inherit;
+  opacity:.65;
+  cursor:pointer;
+  font-size:15px;
+  line-height:1;
+  padding:4px;
+  flex-shrink:0;
+}
+.banner-dismiss:hover{ opacity:1; }
 .banner.warn{
   background: var(--amber-soft);
-  color: var(--amber);
+  color: var(--amber-text);
   border:1px solid rgba(245,166,35, .3);
 }
 .banner.danger{
   background:var(--rose-soft);
-  color:var(--rose);
+  color:var(--rose-text);
   border:1px solid rgba(245,73, 122, .3);
 }
 .banner.success{
   background: var(--emerald-soft);
-  color: var(--emerald);
+  color: var(--emerald-text);
   border:1px solid rgba(31,201,141, .3);
 }
 .banner a{
@@ -494,6 +698,11 @@ margin:4px 0 18px;
   padding:18px 20px;
   box-shadow: var(--shadow-sm);
   min-width:0;
+  transition: transform .18s var(--ease), box-shadow .18s var(--ease);
+}
+.stat-card:hover{
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 .stat-icon{
   width:36px;
@@ -504,21 +713,26 @@ margin:4px 0 18px;
   justify-content:center;
   font-size:16px;
 }
-.stat-icon.violet{
+.stat-icon.violet,
+.stat-icon.orange{
   background:var(--primary-soft);
   color: var(--primary);
 }
+.stat-icon.purple{
+  background:var(--purple-soft);
+  color: var(--purple);
+}
 .stat-icon.green{
   background: var(--emerald-soft);
-  color:var(--emerald);
+  color:var(--emerald-text);
 }
 .stat-icon.amber{
   background:var(--amber-soft);
-  color:var(--amber);
+  color:var(--amber-text);
 }
 .stat-icon.rose{
   background:var(--rose-soft);
-  color:var(--rose);
+  color:var(--rose-text);
 }
 .stat-card .value{
   font-size: 26px;
@@ -530,6 +744,191 @@ margin:4px 0 18px;
 .stat-card .label{
   font-size:12.5px;
   color:var(--text-muted);
+}
+
+.dash-row{
+  display:grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap:16px;
+  margin-bottom:20px;
+  align-items:stretch;
+}
+.dash-tag{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:var(--primary);
+  margin-bottom:10px;
+}
+.dash-tag .view-all{
+  margin-left:auto;
+  text-transform:none;
+  letter-spacing:0;
+  font-weight:600;
+  color:var(--text-muted);
+  cursor:pointer;
+}
+.feature-card{
+  position:relative;
+  border-radius: var(--radius-lg);
+  overflow:hidden;
+  border:1px solid var(--border);
+  min-height:280px;
+  display:flex;
+  align-items:flex-end;
+  box-shadow: var(--shadow-sm);
+}
+.feature-card .feature-bg{
+  position:absolute;
+  inset:0;
+  background-size:cover;
+  background-position:center;
+  background-color: var(--surface-2);
+}
+.feature-card .feature-bg::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  /* Fix (Sep 2026) — scrim strengthened and extended further up the card.
+     The old stops (.92 / .55 / .15) left the title, which sits near the
+     TOP of the bottom-aligned content block, under only ~15-55% darkening
+     — not enough against a bright sky/mountain photo, which is exactly
+     what broke in the reported screenshot. */
+  background:linear-gradient(0deg, rgba(10,11,16,.95) 15%, rgba(10,11,16,.78) 60%, rgba(10,11,16,.35) 100%);
+}
+.feature-card .feature-content{
+  position:relative;
+  z-index:1;
+  padding:20px 22px;
+  width:100%;
+}
+.feature-card h2{
+  font-size:22px;
+  margin-bottom:8px;
+  /* Fix (Sep 2026) — previously unset, so this inherited --text (dark
+     navy, calibrated for the light page background) and nearly vanished
+     against the photo. text-shadow is a safety net for whatever the
+     scrim alone doesn't cover on an unusually bright uploaded photo. */
+  color:#FFFFFF;
+  text-shadow: 0 1px 3px rgba(0,0,0,.5);
+}
+.feature-card p.desc{
+  font-size:13px;
+  /* Fix (Sep 2026) — was var(--text-muted), a mid-gray meant for the
+     light page background, not a dark photo scrim. */
+  color:rgba(255,255,255,.82);
+  margin-bottom:12px;
+  max-width:480px;
+}
+.feature-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:14px;
+  font-size:12.5px;
+  /* Fix (Sep 2026) — same reasoning as .feature-card h2/p.desc above.
+     This happened to be borderline-legible only because it sits in the
+     darkest part of the scrim -- relying on that for every future event
+     photo isn't a real fix. */
+  color:rgba(255,255,255,.75);
+  margin-bottom:16px;
+}
+.feature-meta span{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+.announce-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding:20px;
+  box-shadow: var(--shadow-sm);
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+}
+.announce-card h4{
+  font-size:15px;
+  margin-bottom:8px;
+}
+.announce-card .body-text{
+  font-size:13px;
+  color:var(--text-muted);
+  margin-bottom:14px;
+  flex:1;
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-line-clamp:4;
+  -webkit-box-orient:vertical;
+}
+.announce-card .when{
+  font-size:11.5px;
+  color:var(--text-faint);
+  margin-bottom:10px;
+}
+.qa-grid{
+  display:grid;
+  grid-template-columns: repeat(4,1fr);
+  gap:14px;
+}
+.qa-card{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  padding:16px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  border:1px solid var(--border);
+  cursor:pointer;
+  transition: border-color .15s var(--ease), transform .15s var(--ease);
+  min-width:0;
+}
+.qa-card:hover{
+  border-color:var(--border-strong);
+  transform:translateY(-1px);
+}
+.qa-card .qa-icon{
+  width:38px;
+  height:38px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:17px;
+  flex-shrink:0;
+}
+.qa-card .qa-text b{
+  display:block;
+  font-size:13.5px;
+  margin-bottom:2px;
+}
+.qa-card .qa-text span{
+  font-size:11.5px;
+  color:var(--text-muted);
+}
+.empty-feature{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:280px;
+  border-radius:var(--radius-lg);
+  border:1px dashed var(--border-strong);
+  color:var(--text-faint);
+  font-size:13px;
+  text-align:center;
+  padding:20px;
+}
+@media (max-width: 980px){
+  .dash-row{ grid-template-columns: 1fr;}
+  .qa-grid{ grid-template-columns: repeat(2,1fr);}
+}
+@media (max-width: 560px){
+  .qa-grid{ grid-template-columns: 1fr 1fr;}
+  .feature-card{ min-height:220px;}
 }
 
 .panel{
@@ -703,7 +1102,7 @@ td.empty-note{
 <div class="app-shell">
   <div class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-      <div class="mark"></div>
+      <img src="{{ asset('images/logo.png') }}" alt="SOMS" class="mark">
       <div><b>SOMS</b><span>{{ ucfirst(auth()->user()->role ?? 'guest') }} workspace</span></div>
     </div>
     <div class="who-row who-row-top">
@@ -722,7 +1121,7 @@ td.empty-note{
           <b>{{ auth()->user()->name ?? '' }}</b>
           <span>{{ auth()->user()->student_id ?? '' }}</span>
           @error('avatar')
-          <div style="color:var(--rose); font-size:10.5px; margin-top:4px;">{{ $message }}</div>
+          <div style="color:var(--rose-text); font-size:10.5px; margin-top:4px;">{{ $message }}</div>
           @enderror
           @if(auth()->user()->avatar_path)
           <form method="POST" action="{{ route('avatar.destroy') }}" onsubmit="return confirm('Remove your profile photo?')">
@@ -746,8 +1145,95 @@ td.empty-note{
   </div>
 
   <div class="main">
+    @php
+      // Best-effort notification feed for the bell dropdown. What counts
+      // as a "notification" depends on role — officers/students see
+      // recent announcements (same window as the badge count before);
+      // admins see pending user approvals, since that's the thing an
+      // admin actually needs to act on (see partials/admin-nav.blade.php,
+      // which already badges the Users link with this same figure).
+      // Wrapped defensively since this shared layout renders for every
+      // role, including guests mid-redirect.
+      $headerNotifCount = 0;
+      $headerNotifItems = collect();
+      $headerNotifKind = null;
+      if (auth()->check()) {
+        try {
+          if (in_array(auth()->user()->role, ['officer', 'student'], true)) {
+            $headerOrgId = auth()->user()->activeOfficerPosition?->organization_id
+                ?? \App\Models\Organization::query()->value('id');
+            $headerNotifKind = 'announcement';
+            $headerNotifItems = \App\Models\Announcement::where('organization_id', $headerOrgId)
+                ->where('is_published', true)
+                ->where('created_at', '>=', now()->subDays(3))
+                ->latest()
+                ->limit(5)
+                ->get();
+            $headerNotifCount = $headerNotifItems->count();
+          } elseif (auth()->user()->role === 'admin') {
+            $headerNotifKind = 'approval';
+            $headerNotifItems = \App\Models\User::where('is_approved', false)
+                ->latest()
+                ->limit(5)
+                ->get();
+            $headerNotifCount = $headerNotifItems->count();
+          }
+        } catch (\Throwable $e) {
+          $headerNotifCount = 0;
+          $headerNotifItems = collect();
+        }
+      }
+    @endphp
+    <div class="header-bar">
+      <form class="header-search" action="{{ route('search') }}" method="GET">
+        <span class="icon">🔍</span>
+        <input type="search" name="q" value="{{ request('q') }}" placeholder="Search anything...">
+      </form>
+      <div class="header-bell-wrap">
+        {{-- Roadmap Phase 3.2 -- title="" alone isn't reliably announced by
+             screen readers; aria-label carries the count, and
+             aria-haspopup/aria-expanded describe this as the disclosure
+             toggle it actually is (JS below should keep aria-expanded in
+             sync when the dropdown opens/closes). --}}
+        <button type="button" class="header-bell" id="headerBellBtn"
+                aria-label="Notifications{{ $headerNotifCount > 0 ? ' (' . $headerNotifCount . ' unread)' : '' }}"
+                aria-haspopup="true" aria-expanded="false">
+          🔔
+          @if($headerNotifCount > 0)
+          <span class="badge" aria-hidden="true">{{ $headerNotifCount > 9 ? '9+' : $headerNotifCount }}</span>
+          @endif
+        </button>
+        <div class="notif-dropdown" id="headerNotifDropdown">
+          <div class="notif-dropdown-head">{{ $headerNotifKind === 'approval' ? 'Pending approvals' : 'Recent announcements' }}</div>
+          @forelse($headerNotifItems as $item)
+            @if($headerNotifKind === 'approval')
+            <a href="{{ route('admin.users.index') }}" class="notif-item">
+              <b>{{ $item->name }}</b>
+              <span>Awaiting approval &middot; {{ $item->student_id }}</span>
+            </a>
+            @else
+            <a href="{{ auth()->user()->role === 'student' ? route('student.announcements.show', $item) : route('officer.announcements.index') }}" class="notif-item">
+              <b>{{ $item->title }}</b>
+              <span>{{ $item->created_at->diffForHumans() }}</span>
+            </a>
+            @endif
+          @empty
+          <div class="notif-empty">Nothing new right now.</div>
+          @endforelse
+        </div>
+      </div>
+      @if(auth()->check())
+      <a href="{{ route('settings.profile.edit') }}" class="header-avatar" title="{{ auth()->user()->name }}">
+        @if(auth()->user()->avatar_path)
+        <img src="{{ \Illuminate\Support\Facades\Storage::disk('r2')->url(auth()->user()->avatar_path) }}" alt="">
+        @else
+        {{ strtoupper(substr(auth()->user()->name ?? '?', 0, 1)) }}
+        @endif
+      </a>
+      @endif
+    </div>
     @if(session('status'))
-    <div class="banner" style="background:var(--emerald-soft); color:var(--emerald); margin-bottom:16px;">{{ session('status') }}</div>
+    <div class="banner" style="background:var(--emerald-soft); color:var(--emerald-text); margin-bottom:16px;">{{ session('status') }}</div>
     @endif
     {{ $content ?? '' }}
   </div>
@@ -801,6 +1287,61 @@ td.empty-note{
       if (avatarInput.files && avatarInput.files.length > 0) {
         avatarForm.submit();
       }
+    });
+  })();
+
+  (function() {
+    const bellBtn = document.getElementById('headerBellBtn');
+    const dropdown = document.getElementById('headerNotifDropdown');
+    if (!bellBtn || !dropdown) return;
+
+    bellBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      const isOpen = dropdown.classList.toggle('open');
+      bellBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!dropdown.contains(e.target) && e.target !== bellBtn) {
+        dropdown.classList.remove('open');
+        bellBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // Roadmap Phase 3.2 -- Escape closes the dropdown and returns focus
+    // to the trigger, matching expected disclosure-widget keyboard behavior.
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && dropdown.classList.contains('open')) {
+        dropdown.classList.remove('open');
+        bellBtn.setAttribute('aria-expanded', 'false');
+        bellBtn.focus();
+      }
+    });
+  })();
+
+  (function() {
+    // Dismissible banners: any element with [data-dismiss-key] gets an
+    // auto-inserted ✕ button. Dismissal is stored in sessionStorage, so
+    // it's gone for the rest of this browser tab session but comes back
+    // next time you sign in fresh — matches how these are meant to
+    // behave: a nudge you can clear for now, not a permanent opt-out of
+    // a real underlying issue (see admin/dashboard.blade.php).
+    document.querySelectorAll('[data-dismiss-key]').forEach(function (banner) {
+      const key = 'dismissed-banner:' + banner.dataset.dismissKey;
+      if (sessionStorage.getItem(key)) {
+        banner.style.display = 'none';
+        return;
+      }
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'banner-dismiss';
+      btn.setAttribute('aria-label', 'Dismiss');
+      btn.textContent = '✕';
+      btn.addEventListener('click', function () {
+        sessionStorage.setItem(key, '1');
+        banner.style.display = 'none';
+      });
+      banner.appendChild(btn);
     });
   })();
 </script>

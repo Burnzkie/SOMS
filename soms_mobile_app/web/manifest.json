@@ -1,11 +1,11 @@
 {
-    "name": "soms_mobile",
-    "short_name": "soms_mobile",
+    "name": "SOMS - Student Organization Management System",
+    "short_name": "SOMS",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0B1A4A",
+    "theme_color": "#FF7A29",
+    "description": "Philippine Advent College SGO — events, attendance, fines, and announcements.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

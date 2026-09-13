@@ -42,9 +42,4 @@ class Organization extends Model
     {
         return $this->hasMany(Announcement::class);
     }
-
-    public function calendarEntries(): HasMany
-    {
-        return $this->hasMany(CalendarEntry::class);
-    }
 }

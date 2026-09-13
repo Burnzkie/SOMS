@@ -9,6 +9,7 @@ class OfficerPanelRow {
     this.officerId,
     this.officerName,
     this.officerStudentId,
+    this.permissions = const [],
   });
 
   final String position;
@@ -17,6 +18,7 @@ class OfficerPanelRow {
   final int? officerId;
   final String? officerName;
   final String? officerStudentId;
+  final List<String> permissions;
 
   factory OfficerPanelRow.fromJson(Map<String, dynamic> json) {
     final officer = json['officer'] as Map<String, dynamic>?;
@@ -27,6 +29,7 @@ class OfficerPanelRow {
       officerId: officer?['id'] as int?,
       officerName: officer?['name'] as String?,
       officerStudentId: officer?['student_id'] as String?,
+      permissions: (json['permissions'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
     );
   }
 }
@@ -59,6 +62,7 @@ class AdminUserRow {
     this.department,
     required this.isApproved,
     required this.createdAt,
+    this.avatarUrl,
   });
 
   final int id;
@@ -68,6 +72,12 @@ class AdminUserRow {
   final String? department;
   final bool isApproved;
   final String createdAt;
+  // Fix (Sep 2026) — this screen previously showed only an initial-letter
+  // placeholder for every user, same underlying gap as the web admin
+  // views. Backend now appends avatar_url to every serialized User (see
+  // App\Models\User::avatarUrl()) so this is ready to use directly, no
+  // R2 URL-building needed on the client.
+  final String? avatarUrl;
 
   factory AdminUserRow.fromJson(Map<String, dynamic> json) => AdminUserRow(
         id: json['id'] as int,
@@ -77,6 +87,7 @@ class AdminUserRow {
         department: json['department'] as String?,
         isApproved: json['is_approved'] as bool? ?? false,
         createdAt: json['created_at'] as String? ?? '',
+        avatarUrl: json['avatar_url'] as String?,
       );
 }
 

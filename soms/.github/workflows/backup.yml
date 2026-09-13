@@ -1,0 +1,65 @@
+name: Weekly Database Backup
+
+# Security audit (Sep 2026) — Backup & Recovery gap: no automated backup
+# process existed at all. Runs weekly, dumps the production Clever Cloud
+# MySQL database, gzips it, and uploads it to the R2 bucket already used
+# for avatar storage (config/filesystems.php 'r2' disk) under a backups/
+# prefix — no new infrastructure or paid service needed.
+#
+# Required repo secrets (Settings > Secrets and variables > Actions):
+#   DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME, DB_PASSWORD  (Clever Cloud)
+#   R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+#   (same names/values as your .env — R2_ENDPOINT is the full
+#   https://<account_id>.r2.cloudflarestorage.com URL)
+#
+# Restore: gunzip the downloaded file, then
+#   mysql -h <host> -P <port> -u <user> -p <database> < backup.sql
+#
+# Retention/pruning of old backups in the bucket is not automated here —
+# manual cleanup for now (README has a note on this as follow-up work).
+
+on:
+  schedule:
+    - cron: '0 18 * * 0'   # Sundays, 18:00 UTC (~02:00 Mon in PH time)
+  workflow_dispatch: {}     # manual "Run workflow" button for on-demand backups
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install MySQL client
+        run: sudo apt-get update && sudo apt-get install -y mysql-client
+
+      - name: Dump database
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_DATABASE: ${{ secrets.DB_DATABASE }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          STAMP=$(date -u +%Y-%m-%dT%H%M%SZ)
+          echo "BACKUP_FILE=soms-backup-${STAMP}.sql.gz" >> "$GITHUB_ENV"
+          mysqldump \
+            --host="$DB_HOST" \
+            --port="$DB_PORT" \
+            --user="$DB_USERNAME" \
+            --password="$DB_PASSWORD" \
+            --single-transaction \
+            --routines \
+            --triggers \
+            "$DB_DATABASE" | gzip -9 > "/tmp/${BACKUP_FILE}"
+
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          aws s3 cp "/tmp/${BACKUP_FILE}" \
+            "s3://${{ secrets.R2_BUCKET }}/backups/${BACKUP_FILE}" \
+            --endpoint-url "${{ secrets.R2_ENDPOINT }}"
+
+      - name: Clean up local dump
+        if: always()
+        run: rm -f "/tmp/${BACKUP_FILE}"

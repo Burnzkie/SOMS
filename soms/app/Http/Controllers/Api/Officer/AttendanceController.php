@@ -12,6 +12,7 @@ use App\Services\QrTokenService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 /**
  * Mobile officer attendance scanning — live path + offline scan-batch.
@@ -157,6 +158,62 @@ class AttendanceController extends Controller
                 'attendance_id'=> $attendance->id,
             ];
         });
+    }
+
+    /**
+     * POST /api/v1/officer/attendance/sessions/{session}/override
+     * Mobile counterpart to Http\Controllers\Officer\AttendanceController::
+     * manualOverride() (officer/attendance/scan.blade.php "Manual override"
+     * panel). Same live password re-auth requirement — this is a fallback
+     * for a student without a working QR (broken phone, dead battery),
+     * not a bypass of scan authorization.
+     */
+    public function manualOverride(Request $request, EventSession $session)
+    {
+        $this->authorize('override', $session);
+
+        $data = $request->validate([
+            'password'        => 'required',
+            'student_id'      => 'required|exists:users,student_id',
+            'override_reason' => 'required|string|min:5',
+            'scan_type'       => 'required|in:time_in,time_out',
+        ]);
+
+        if (!Hash::check($data['password'], auth()->user()->password)) {
+            ActivityLog::record(auth()->id(), 'override_reauth_failed', EventSession::class, $session->id);
+            abort(403, 'Re-authentication failed.');
+        }
+
+        $student = User::where('student_id', $data['student_id'])->firstOrFail();
+
+        $attendance = EventAttendance::updateOrCreate(
+            [
+                'event_session_id' => $session->id,
+                'user_id'          => $student->id,
+                'scan_type'        => $data['scan_type'],
+            ],
+            [
+                'event_id'            => $session->eventDay->event_id,
+                'event_day_id'        => $session->event_day_id,
+                'scanned_at'          => now(),
+                'marked_by'           => auth()->id(),
+                'status'              => 'present',
+                'is_manual_override'  => true,
+                'override_reason'     => $data['override_reason'],
+            ]
+        );
+
+        ActivityLog::record(auth()->id(), 'attendance_manual_override', EventAttendance::class, $attendance->id, [
+            'student_id' => $student->student_id,
+            'reason'     => $data['override_reason'],
+        ]);
+
+        return response()->json(['success' => true, 'message' => "Manual override recorded for {$student->name}.", 'data' => [
+            'attendance_id' => $attendance->id,
+            'student_name'  => $student->name,
+            'student_id'    => $student->student_id,
+            'scan_type'     => $data['scan_type'],
+        ]]);
     }
 
     /**

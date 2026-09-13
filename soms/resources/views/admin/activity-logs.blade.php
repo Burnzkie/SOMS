@@ -14,7 +14,7 @@
 </div>
 
 @unless($logChainOk)
-<div class="banner danger">⚠ Activity log chain integrity check failed - review immediately.</div>
+<div class="banner danger" data-dismiss-key="admin-log-chain">⚠ Activity log chain integrity check failed - review immediately.</div>
 @endunless
 
 <div class="panel">
@@ -33,7 +33,12 @@
                     <td>{{$log->created_at->format('M j, Y g:i A')}}</td>
                     <td>
                         <div class="user-cell">
-                            <span class="avatar-sm"></span>
+                            @if($log->user?->avatar_url)
+                                <img src="{{ $log->user->avatar_url }}"
+                                     alt="{{ $log->user->name }}" class="avatar-sm" style="object-fit:cover;">
+                            @else
+                                <span class="avatar-sm"></span>
+                            @endif
                             <span>{{$log->user->name ?? 'System'}}</span>
                         </div>
                     </td>

@@ -70,6 +70,9 @@ class ApiClient {
   Future<Map<String, dynamic>> put(String path, {Map<String, dynamic>? data}) =>
       _request(() => _dio.put(path, data: data));
 
+  Future<Map<String, dynamic>> patch(String path, {Map<String, dynamic>? data}) =>
+      _request(() => _dio.patch(path, data: data));
+
   /// Multipart file upload — same token/error handling as everything else
   /// above, just a different Dio call underneath since FormData isn't a
   /// Map<String, dynamic>. [method] is 'POST' or 'PUT'; used by avatar

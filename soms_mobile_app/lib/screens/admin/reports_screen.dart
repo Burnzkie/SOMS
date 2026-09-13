@@ -33,6 +33,7 @@ class AdminReportsScreen extends ConsumerWidget {
                       label: 'Collected',
                       amount: summary.totalCollected,
                       color: Colors.green,
+                      textColor: const Color(0xFF39843C),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -41,6 +42,7 @@ class AdminReportsScreen extends ConsumerWidget {
                       label: 'Waived (not revenue)',
                       amount: summary.totalWaived,
                       color: Colors.blueGrey,
+                      textColor: const Color(0xFF5C7885),
                     ),
                   ),
                 ],
@@ -64,11 +66,16 @@ class AdminReportsScreen extends ConsumerWidget {
 }
 
 class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.label, required this.amount, required this.color});
+  const _SummaryCard({required this.label, required this.amount, required this.color, required this.textColor});
 
   final String label;
   final double amount;
   final Color color;
+  // Accessibility fix (Sep 2026) — `color` (Colors.green/.blueGrey) is fine
+  // for the 10%-tint card background, but was also driving the actual
+  // "Collected"/"Waived" label text, at 2.78:1 / 4.37:1 on that background
+  // -- under WCAG AA's 4.5:1. Separate accessible color for the text only.
+  final Color textColor;
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +86,7 @@ class _SummaryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+            Text(label, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 12)),
             const SizedBox(height: 6),
             Text('₱${amount.toStringAsFixed(2)}', style: Theme.of(context).textTheme.titleLarge),
           ],

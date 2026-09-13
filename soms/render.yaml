@@ -1,0 +1,71 @@
+# render.yaml
+# Roadmap Phase 2.2 (alternative) — the more robust version of running a
+# queue worker: a dedicated worker service instead of a background process
+# inside the web container's start.sh. Not required — start.sh's
+# single-container approach works fine at SOMS's current scale — but use
+# this blueprint if a web-process crash/redeploy killing the worker
+# mid-job ever becomes a real problem.
+#
+# Both services build from the same Dockerfile / image, so there's nothing
+# to duplicate — only the start command differs.
+
+services:
+  - type: web
+    name: soms-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: /usr/local/bin/start.sh
+    envVarGroups:
+      - soms-shared-env
+
+  - type: worker
+    name: soms-queue-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: php artisan queue:work --tries=3 --backoff=5 --max-time=3600 --sleep=3
+    envVarGroups:
+      - soms-shared-env
+
+envVarGroups:
+  - name: soms-shared-env
+    envVars:
+      - key: APP_KEY
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_DATABASE
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: R2_ENDPOINT
+        sync: false
+      - key: R2_PUBLIC_URL
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: SANCTUM_STATEFUL_DOMAINS
+        sync: false
+      # Deploy-readiness fix (Sep 2026): these three were previously
+      # undeclared here, meaning if never set by hand in the Render
+      # dashboard they'd silently fall back to config/*.php defaults.
+      # APP_ENV/APP_DEBUG default safely (production/false) either way,
+      # but FILESYSTEM_DISK defaults to 'local' -- Render's container
+      # filesystem is ephemeral, so avatars/uploads would silently vanish
+      # on every redeploy. Fixed (not sync:false) since these aren't
+      # secrets and shouldn't be left for someone to remember by hand.
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: FILESYSTEM_DISK
+        value: r2

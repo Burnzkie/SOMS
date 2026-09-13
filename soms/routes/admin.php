@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OfficerAppointmentController;
+use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SystemHealthController;
 use App\Http\Controllers\Admin\UserController;
@@ -20,5 +21,8 @@ Route::post('/users/{user}/reject', [UserController::class, 'reject'])->name('ad
 Route::get('/officers', [OfficerAppointmentController::class, 'index'])->name('admin.officers.index');
 Route::post('/officers/appoint', [OfficerAppointmentController::class, 'store'])->name('admin.officers.appoint');
 Route::post('/officers/{position}/revoke', [OfficerAppointmentController::class, 'revoke'])->name('admin.officers.revoke');
+Route::get('/permissions', [PermissionController::class, 'index'])->name('admin.permissions.index');
+Route::get('/permissions/{position}', [PermissionController::class, 'edit'])->name('admin.permissions.edit');
+Route::put('/permissions/{position}', [PermissionController::class, 'update'])->name('admin.permissions.update');
 Route::get('/reports', [ReportController::class, 'index'])->name('admin.reports.index');
 Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('admin.activity-logs.index');

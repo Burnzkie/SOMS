@@ -69,6 +69,11 @@ class _OfficerScanScreenState extends ConsumerState<OfficerScanScreen> {
             onPressed: () => _controller.toggleTorch(),
             tooltip: 'Toggle flashlight',
           ),
+          IconButton(
+            icon: const Icon(Icons.edit_note_outlined),
+            onPressed: _openManualOverride,
+            tooltip: 'Manual override',
+          ),
         ],
       ),
       body: Column(
@@ -249,6 +254,112 @@ class _OfficerScanScreenState extends ConsumerState<OfficerScanScreen> {
   }
 
   String _titleCase(String s) => s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  /// Fallback for a student without a working QR (dead phone, broken
+  /// screen) — mirrors the web scan station's "Manual override" panel
+  /// (officer/attendance/scan.blade.php). Requires live password
+  /// re-auth server-side, so this is online-only: there's no offline
+  /// queue path for it, same as the web version.
+  Future<void> _openManualOverride() async {
+    final online = ref.read(connectivityProvider).value ?? true;
+    if (!online) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Manual override needs a connection (live password re-auth).')),
+      );
+      return;
+    }
+
+    final studentIdCtrl = TextEditingController();
+    final reasonCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    String scanType = 'time_in';
+    final formKey = GlobalKey<FormState>();
+
+    final submitted = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Manual override', style: Theme.of(ctx).textTheme.titleLarge),
+                const SizedBox(height: 4),
+                Text(
+                  'Use only when a student\'s QR can\'t be scanned. Requires your password.',
+                  style: Theme.of(ctx).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: studentIdCtrl,
+                  decoration: const InputDecoration(labelText: 'Student ID'),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: scanType,
+                  decoration: const InputDecoration(labelText: 'Scan type'),
+                  items: const [
+                    DropdownMenuItem(value: 'time_in', child: Text('Time in')),
+                    DropdownMenuItem(value: 'time_out', child: Text('Time out')),
+                  ],
+                  onChanged: (v) => setSheetState(() => scanType = v ?? 'time_in'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: reasonCtrl,
+                  decoration: const InputDecoration(labelText: 'Reason for manual override'),
+                  minLines: 1,
+                  maxLines: 3,
+                  validator: (v) => (v == null || v.trim().length < 5) ? 'At least 5 characters' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: passwordCtrl,
+                  decoration: const InputDecoration(labelText: 'Your password (re-auth)'),
+                  obscureText: true,
+                  validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                ),
+                const SizedBox(height: 20),
+                FilledButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) Navigator.pop(ctx, true);
+                  },
+                  child: const Text('Record override'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (submitted != true || !mounted) return;
+
+    final api = ref.read(apiClientProvider);
+    try {
+      final res = await api.post('/officer/attendance/sessions/${widget.session.id}/override', data: {
+        'student_id': studentIdCtrl.text.trim(),
+        'scan_type': scanType,
+        'override_reason': reasonCtrl.text.trim(),
+        'password': passwordCtrl.text,
+      });
+      final data = res['data'] as Map<String, dynamic>? ?? {};
+      final name = data['student_name'] as String? ?? studentIdCtrl.text.trim();
+      _pushFeed('$name — override', _titleCase(scanType.replaceAll('_', ' ')), Colors.teal, Icons.edit_note_outlined);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Manual override recorded for $name.')));
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
 }
 
 class _StatusBar extends StatelessWidget {
@@ -260,6 +371,10 @@ class _StatusBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = online ? Colors.green : Colors.orange;
+    // Accessibility fix (Sep 2026) — `color` drives real status text here
+    // ("Online"/"Offline — ..."), not just the wifi icon. Colors.orange
+    // measured 2.16:1 on white, under WCAG AA's 4.5:1.
+    final textColor = online ? const Color(0xFF39843C) : const Color(0xFFA86400);
     return Container(
       width: double.infinity,
       color: color.withValues(alpha: 0.12),
@@ -270,7 +385,7 @@ class _StatusBar extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             online ? 'Online — scans sync live' : 'Offline — scans are being queued on this device',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: textColor),
           ),
           const Spacer(),
           if (pending > 0) Text('$pending pending total', style: Theme.of(context).textTheme.bodySmall),

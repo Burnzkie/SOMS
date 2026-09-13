@@ -25,7 +25,7 @@ class StudentApiController extends Controller
             ->where('date_end', '>=', now()->toDateString())
             ->orderBy('date_start')
             ->take(5)
-            ->get(['id', 'title', 'venue', 'date_start', 'date_end']);
+            ->get(['id', 'title', 'venue', 'description', 'image_path', 'date_start', 'date_end']);
 
         $recentAnnouncements = Announcement::whereIn('organization_id', $orgIds)
             ->where('is_published', true)

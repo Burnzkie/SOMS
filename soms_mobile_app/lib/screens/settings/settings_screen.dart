@@ -1,6 +1,7 @@
 // lib/screens/settings/settings_screen.dart
 
 import 'package:flutter/material.dart';
+import '../../core/api_config.dart';
 import '../auth/change_password_screen.dart';
 import 'edit_profile_screen.dart';
 
@@ -32,6 +33,14 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const ChangePasswordScreen()),
             ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.dns_outlined),
+            title: const Text('Connected to'),
+            subtitle: Text(ApiConfig.baseUrl,
+                style:
+                    const TextStyle(fontFamily: 'monospace', fontSize: 11.5)),
           ),
         ],
       ),

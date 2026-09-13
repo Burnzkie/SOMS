@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,16 +12,34 @@
   --ease:cubic-bezier(.4,0,.2,1);
   --font-ui:'Inter',system-ui,sans-serif;
   --font-display:'Inter Tight','Inter',system-ui,sans-serif;
-  --primary:#5B5BF6; --violet:#9B5CF6;
-  --primary-soft:rgba(91,91,246,.14);
-  --emerald:#1FC98D; --emerald-soft:rgba(31,201,141,.14);
-  --amber:#F5A623; --amber-soft:rgba(245,166,35,.14);
-  --rose:#F5497A; --rose-soft:rgba(245,73,122,.14);
-  --bg:#0A0B10; --bg-elevated:#11131C; --surface:#15171F; --surface-2:#1B1E29;
-  --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.14);
-  --text:#EDEEF4; --text-muted:#8C90A3; --text-faint:#5C6075;
-  --shadow-sm: 0 2px 8px rgba(0,0,0,.3);
-  --shadow-md: 0 8px 24px rgba(0,0,0,.4);
+
+  /* "Lively" light-first palette (Sept 2026 redesign) — vivid blue primary
+     against light content, dark navy reserved for the sidebar/chrome only
+     (see the .sidebar block below, which locally re-scopes these same
+     variable names to on-dark equivalents via CSS custom-property
+     cascading — every component that reads var(--text-muted) etc. picks
+     up the right value automatically depending on whether it's inside
+     the sidebar or the main content area, with zero per-component
+     changes needed). */
+  --primary:#2563EB; --violet:#4F7DF3;
+  --primary-soft:rgba(37,99,235,.12);
+  --purple:#8B5CF6; --purple-soft:rgba(139,92,246,.12);
+  --emerald:#10B981; --emerald-soft:rgba(16,185,129,.12);
+  --amber:#F59E0B; --amber-soft:rgba(245,158,11,.12);
+  --rose:#F43F5E; --rose-soft:rgba(244,63,94,.12);
+  /* Accessibility audit (Sep 2026) — the vivid emerald/amber/rose above
+     are ~2:1 contrast as TEXT against white/soft backgrounds, well under
+     WCAG AA's 4.5:1 for normal text (confirmed against .badge, .mini-btn,
+     and error-text usages). Same-hue darker variants for anywhere these
+     colors render as readable text (badges, banners, error messages) —
+     the originals stay in use for dots/backgrounds/borders, which meet
+     the lower 3:1 non-text-UI-component threshold already. */
+  --emerald-text:#0B7C56; --amber-text:#996206; --rose-text:#D00C2E;
+  --bg:#F4F6FB; --bg-elevated:#0B1330; --surface:#FFFFFF; --surface-2:#F1F4FA;
+  --border:rgba(15,23,42,.08); --border-strong:rgba(15,23,42,.14);
+  --text:#0F172A; --text-muted:#64748B; --text-faint:#94A3B8;
+  --shadow-sm: 0 1px 2px rgba(15,23,42,.05), 0 1px 1px rgba(15,23,42,.04);
+  --shadow-md: 0 12px 28px -10px rgba(15,23,42,.16);
 }
 *{box-sizing:border-box;}
 html{
@@ -100,6 +118,18 @@ table{ max-width: 100%;}
   flex-direction: column;
   padding:22px 16px; 
   flex-shrink: 0;
+  /* Sidebar chrome stays dark navy even though the rest of the app is now
+     light — re-scoping these variable names locally (rather than adding
+     new ones) means every existing rule below that reads var(--text),
+     var(--text-muted), var(--surface), var(--border) etc. automatically
+     renders correctly on dark, with no per-selector changes needed. */
+  --surface: rgba(255,255,255,.05);
+  --surface-2: rgba(255,255,255,.09);
+  --border: rgba(255,255,255,.10);
+  --border-strong: rgba(255,255,255,.20);
+  --text: #F3F5FC;
+  --text-muted: #97A3C4;
+  --text-faint: #6B77A0;
 }
 .sidebar-brand{
   display:flex;
@@ -117,6 +147,9 @@ table{ max-width: 100%;}
 .sidebar-brand b{
   font-size: 15px;
   font-family:var(--font-display);
+  /* Fix (Sep 2026) — see components/layout.blade.php for the full
+     rationale; same bug, duplicated in this legacy layout. */
+  color: var(--text);
 }
 .sidebar-brand span{
   display:block;
@@ -198,6 +231,9 @@ margin:4px 0 18px;
 .who-row .who b{
   display:block;
   font-size:13px;
+  /* Fix (Sep 2026) — see components/layout.blade.php for the full
+     rationale; same bug, duplicated in this legacy layout. */
+  color: var(--text);
 }
 .who-row .who span{
   font-size: 11px;
@@ -264,7 +300,7 @@ margin:4px 0 18px;
   text-decoration-style:dotted;
   text-underline-offset:2px;
 }
-.avatar-remove-link:hover{ color:var(--rose); }
+.avatar-remove-link:hover{ color:var(--rose-text); }
 .logout-btn{
   width:100%;
   height:38px;
@@ -278,7 +314,7 @@ margin:4px 0 18px;
   cursor:pointer;
 }
 .logout-btn:hover{
-  color:var(--rose);
+  color:var(--rose-text);
   border-color:var(--rose);
 }
 .btn{
@@ -334,8 +370,8 @@ margin:4px 0 18px;
   font-family: var(--font-ui);
   white-space:nowrap;
 }
-.mini-btn.approve{ background: var(--emerald-soft); color: var(--emerald);}
-.mini-btn.reject{ background: var(--rose-soft); color: var(--rose);}
+.mini-btn.approve{ background: var(--emerald-soft); color: var(--emerald-text);}
+.mini-btn.reject{ background: var(--rose-soft); color: var(--rose-text);}
 
 .queue-actions{
   display:flex;
@@ -423,13 +459,13 @@ margin:4px 0 18px;
   border-radius:99px;
   white-space:nowrap;
 }
-.badge.approved{ background: var(--emerald-soft); color: var(--emerald);}
-.badge.pending{ background: var(--amber-soft); color: var(--amber);}
-.badge.paid{ background: var(--emerald-soft); color: var(--emerald);}
+.badge.approved{ background: var(--emerald-soft); color: var(--emerald-text);}
+.badge.pending{ background: var(--amber-soft); color: var(--amber-text);}
+.badge.paid{ background: var(--emerald-soft); color: var(--emerald-text);}
 .badge.waived{ background: var(--primary-soft); color: var(--primary);}
-.badge.unpaid{ background: var(--rose-soft); color: var(--rose);}
-.badge.flagged{ background: var(--rose-soft); color: var(--rose);}
-.badge.rejected{ background: var(--rose-soft); color: var(--rose);}
+.badge.unpaid{ background: var(--rose-soft); color: var(--rose-text);}
+.badge.flagged{ background: var(--rose-soft); color: var(--rose-text);}
+.badge.rejected{ background: var(--rose-soft); color: var(--rose-text);}
 
 .main{
   flex:1;
@@ -463,17 +499,17 @@ margin:4px 0 18px;
 }
 .banner.warn{
   background: var(--amber-soft);
-  color: var(--amber);
+  color: var(--amber-text);
   border:1px solid rgba(245,166,35, .3);
 }
 .banner.danger{
   background:var(--rose-soft);
-  color:var(--rose);
+  color:var(--rose-text);
   border:1px solid rgba(245,73, 122, .3);
 }
 .banner.success{
   background: var(--emerald-soft);
-  color: var(--emerald);
+  color: var(--emerald-text);
   border:1px solid rgba(31,201,141, .3);
 }
 .banner a{
@@ -503,21 +539,26 @@ margin:4px 0 18px;
   justify-content:center;
   font-size:16px;
 }
-.stat-icon.violet{
+.stat-icon.violet,
+.stat-icon.orange{
   background:var(--primary-soft);
   color: var(--primary);
 }
+.stat-icon.purple{
+  background:var(--purple-soft);
+  color: var(--purple);
+}
 .stat-icon.green{
   background: var(--emerald-soft);
-  color:var(--emerald);
+  color:var(--emerald-text);
 }
 .stat-icon.amber{
   background:var(--amber-soft);
-  color:var(--amber);
+  color:var(--amber-text);
 }
 .stat-icon.rose{
   background:var(--rose-soft);
-  color:var(--rose);
+  color:var(--rose-text);
 }
 .stat-card .value{
   font-size: 26px;
@@ -529,6 +570,178 @@ margin:4px 0 18px;
 .stat-card .label{
   font-size:12.5px;
   color:var(--text-muted);
+}
+
+.dash-row{
+  display:grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap:16px;
+  margin-bottom:20px;
+  align-items:stretch;
+}
+.dash-tag{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:var(--primary);
+  margin-bottom:10px;
+}
+.dash-tag .view-all{
+  margin-left:auto;
+  text-transform:none;
+  letter-spacing:0;
+  font-weight:600;
+  color:var(--text-muted);
+  cursor:pointer;
+}
+.feature-card{
+  position:relative;
+  border-radius: var(--radius-lg);
+  overflow:hidden;
+  border:1px solid var(--border);
+  min-height:280px;
+  display:flex;
+  align-items:flex-end;
+  box-shadow: var(--shadow-sm);
+}
+.feature-card .feature-bg{
+  position:absolute;
+  inset:0;
+  background-size:cover;
+  background-position:center;
+  background-color: var(--surface-2);
+}
+.feature-card .feature-bg::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  /* Fix (Sep 2026) — see components/layout.blade.php for the full
+     rationale; same bug, duplicated in this legacy layout. */
+  background:linear-gradient(0deg, rgba(10,11,16,.95) 15%, rgba(10,11,16,.78) 60%, rgba(10,11,16,.35) 100%);
+}
+.feature-card .feature-content{
+  position:relative;
+  z-index:1;
+  padding:20px 22px;
+  width:100%;
+}
+.feature-card h2{
+  font-size:22px;
+  margin-bottom:8px;
+  color:#FFFFFF;
+  text-shadow: 0 1px 3px rgba(0,0,0,.5);
+}
+.feature-card p.desc{
+  font-size:13px;
+  color:rgba(255,255,255,.82);
+  margin-bottom:12px;
+  max-width:480px;
+}
+.feature-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:14px;
+  font-size:12.5px;
+  color:rgba(255,255,255,.75);
+  margin-bottom:16px;
+}
+.feature-meta span{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+.announce-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding:20px;
+  box-shadow: var(--shadow-sm);
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+}
+.announce-card h4{
+  font-size:15px;
+  margin-bottom:8px;
+}
+.announce-card .body-text{
+  font-size:13px;
+  color:var(--text-muted);
+  margin-bottom:14px;
+  flex:1;
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-line-clamp:4;
+  -webkit-box-orient:vertical;
+}
+.announce-card .when{
+  font-size:11.5px;
+  color:var(--text-faint);
+  margin-bottom:10px;
+}
+.qa-grid{
+  display:grid;
+  grid-template-columns: repeat(4,1fr);
+  gap:14px;
+}
+.qa-card{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  padding:16px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  border:1px solid var(--border);
+  cursor:pointer;
+  transition: border-color .15s var(--ease), transform .15s var(--ease);
+  min-width:0;
+}
+.qa-card:hover{
+  border-color:var(--border-strong);
+  transform:translateY(-1px);
+}
+.qa-card .qa-icon{
+  width:38px;
+  height:38px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:17px;
+  flex-shrink:0;
+}
+.qa-card .qa-text b{
+  display:block;
+  font-size:13.5px;
+  margin-bottom:2px;
+}
+.qa-card .qa-text span{
+  font-size:11.5px;
+  color:var(--text-muted);
+}
+.empty-feature{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:280px;
+  border-radius:var(--radius-lg);
+  border:1px dashed var(--border-strong);
+  color:var(--text-faint);
+  font-size:13px;
+  text-align:center;
+  padding:20px;
+}
+@media (max-width: 980px){
+  .dash-row{ grid-template-columns: 1fr;}
+  .qa-grid{ grid-template-columns: repeat(2,1fr);}
+}
+@media (max-width: 560px){
+  .qa-grid{ grid-template-columns: 1fr 1fr;}
+  .feature-card{ min-height:220px;}
 }
 
 .panel{
@@ -721,7 +934,7 @@ td.empty-note{
           <b>{{ auth()->user()->name ?? '' }}</b>
           <span>{{ auth()->user()->student_id ?? '' }}</span>
           @error('avatar')
-          <div style="color:var(--rose); font-size:10.5px; margin-top:4px;">{{ $message }}</div>
+          <div style="color:var(--rose-text); font-size:10.5px; margin-top:4px;">{{ $message }}</div>
           @enderror
           @if(auth()->user()->avatar_path)
           <form method="POST" action="{{ route('avatar.destroy') }}" onsubmit="return confirm('Remove your profile photo?')">
@@ -746,7 +959,7 @@ td.empty-note{
 
   <div class="main">
     @if(session('status'))
-    <div class="banner" style="background:var(--emerald-soft); color:var(--emerald); margin-bottom:16px;">{{ session('status') }}</div>
+    <div class="banner" style="background:var(--emerald-soft); color:var(--emerald-text); margin-bottom:16px;">{{ session('status') }}</div>
     @endif
     @yield('content')
   </div>

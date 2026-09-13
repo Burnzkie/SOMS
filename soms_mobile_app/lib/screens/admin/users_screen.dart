@@ -93,7 +93,15 @@ class _UserTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       child: ListTile(
-        leading: CircleAvatar(child: Text(user.name.isNotEmpty ? user.name[0].toUpperCase() : '?')),
+        // Fix (Sep 2026) — was always the initial-letter fallback, never
+        // the actual uploaded photo, since `avatar_url` didn't exist on
+        // this model until now.
+        leading: CircleAvatar(
+          backgroundImage: user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
+          child: user.avatarUrl == null
+              ? Text(user.name.isNotEmpty ? user.name[0].toUpperCase() : '?')
+              : null,
+        ),
         title: Text(user.name),
         subtitle: Text('${user.studentId} · ${user.department ?? '—'} · ${user.role}'),
         trailing: user.isApproved

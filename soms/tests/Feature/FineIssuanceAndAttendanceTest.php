@@ -236,7 +236,8 @@ class FineIssuanceAndAttendanceTest extends TestCase
         OfficerPosition::create([
             'user_id' => $officer->id,
             'organization_id' => $this->org->id,
-            'position_title' => 'Secretary', // Administrative tier -> manage_attendance
+            'position_title' => 'Secretary',
+            'permissions' => ['manage_attendance'],
             'academic_year' => '2026-2027',
             'is_active' => true,
             'appointed_at' => now(),

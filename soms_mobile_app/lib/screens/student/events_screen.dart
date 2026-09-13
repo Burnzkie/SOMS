@@ -131,13 +131,24 @@ class _SessionAttendanceTile extends StatelessWidget {
       'absent' => (Colors.red, Icons.cancel_outlined),
       _ => (Theme.of(context).colorScheme.outline, Icons.remove_circle_outline),
     };
+    // Accessibility fix (Sep 2026) — `color` above (used for the trailing
+    // status word, not just the icon) measured as low as 2.16:1 on white
+    // for Colors.orange, under WCAG AA's 4.5:1. Darker same-hue variants
+    // for the text only; the icon keeps the original, brighter color.
+    final textColor = switch (status) {
+      'present' => const Color(0xFF39843C),
+      'late' => const Color(0xFFA86400),
+      'flagged_for_review' => const Color(0xFFA86400),
+      'absent' => const Color(0xFFE51B0D),
+      _ => color,
+    };
 
     return ListTile(
       dense: true,
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon, color: color),
       title: Text('${_titleCase(session.sessionType)} — ${session.timeinStart} to ${session.timeinEnd}'),
-      trailing: Text(status ?? 'no record', style: TextStyle(color: color)),
+      trailing: Text(status ?? 'no record', style: TextStyle(color: textColor)),
     );
   }
 

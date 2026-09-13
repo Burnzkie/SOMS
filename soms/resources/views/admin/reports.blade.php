@@ -48,7 +48,12 @@
                 <tr>
                     <td>
                         <div class="user-cell">
-                            <span class="avatar-sm"></span>
+                            @if($row->user->avatar_url)
+                                <img src="{{ $row->user->avatar_url }}"
+                                     alt="{{ $row->user->name }}" class="avatar-sm" style="object-fit:cover;">
+                            @else
+                                <span class="avatar-sm"></span>
+                            @endif
                             <span>{{$row->user->name}}</span>
                         </div>
                     </td>

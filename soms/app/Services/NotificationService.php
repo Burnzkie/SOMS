@@ -32,6 +32,10 @@ class NotificationService
             'announcement_published' => ['New Announcement', 'A new announcement has been posted.'],
             'appointed_to_officer'   => ['Officer Appointment', 'You have been appointed as ' . ($data['position'] ?? 'your new position') . '.'],
             'officer_term_ended'     => ['Officer Term Ended', 'Your term as ' . ($data['position'] ?? 'officer') . ' has ended.'],
+            'event_published'        => ['Event Posted', '"' . ($data['title'] ?? 'A campus event') . '" has been posted to the calendar.'],
+            'event_rescheduled'      => ['Event Rescheduled', '"' . ($data['title'] ?? 'An event') . '" has been moved to ' . ($data['date'] ?? 'a new date') . '.'],
+            'calendar_entry_added'   => ['Calendar Entry Added', '"' . ($data['title'] ?? 'A calendar entry') . '" was added on ' . ($data['date'] ?? 'the calendar') . '.'],
+            'calendar_entry_rescheduled' => ['Calendar Entry Moved', '"' . ($data['title'] ?? 'A calendar entry') . '" was moved to ' . ($data['date'] ?? 'a new date') . '.'],
         ];
 
         if (!isset($templates[$type])) {
@@ -52,6 +56,26 @@ class NotificationService
         if ($user?->fcm_token) {
             // FCM push send — wired in once laravel-notification-channels/fcm
             // and FCM_SERVER_KEY are configured (see 10-Mobile-Deployment.md).
+        }
+    }
+
+    /**
+     * Send the same notification to every member of an organization —
+     * same "look up OrganizationMember rows, loop, send" pattern already
+     * used by AnnouncementController::publish(). Used by calendar/event
+     * scheduling so all users are notified when something is posted or
+     * its date changes, not just the officer who made the change.
+     */
+    public static function broadcastToOrganization(?int $organizationId, string $type, array $data = []): void
+    {
+        if ($organizationId === null) {
+            return;
+        }
+
+        $memberIds = \App\Models\OrganizationMember::where('organization_id', $organizationId)->pluck('user_id');
+
+        foreach ($memberIds as $userId) {
+            self::send($userId, $type, $data);
         }
     }
 }

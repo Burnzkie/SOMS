@@ -1,0 +1,53 @@
+name: CI
+
+# Security audit (Sep 2026) — v3.4 addendum item: "GitHub Actions extended
+# to run tests+lint on push". Runs the existing PHPUnit suite (24 tests),
+# Pint style check, and a composer dependency vulnerability audit on every
+# push/PR. Uses in-memory SQLite (phpunit.xml already configures this),
+# same as local `php artisan test` — no MySQL service container needed.
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, dom, fileinfo, mysql, sqlite3, gd, bcmath, zip
+          coverage: none
+
+      - name: Cache composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run test suite
+        run: php artisan test
+
+      - name: Check code style (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Dependency vulnerability audit
+        run: composer audit
+        # Doesn't fail the build on findings yet — flip this to a hard
+        # failure once the project has a process for triaging/patching
+        # advisories. For now it's visible in the job log either way.
+        continue-on-error: true

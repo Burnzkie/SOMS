@@ -30,10 +30,10 @@ Route::get('/', function (){
 });
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-Route::post('/register', [AuthController::class, 'register']);
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register');
 
 // Forgotten Password Flow (Hardened) -- see 03-Auth-Security.md Part A.
 Route::get('/forgot-password', [ForgotPasswordController::class, 'showForm'])->name('forgot-password.show');
@@ -67,6 +67,8 @@ Route::middleware(['auth', 'must.change.password'])->group(function () {
     // (see /change-password near top of file) and isn't duplicated here.
     Route::get('/settings/profile', [ProfileController::class, 'edit'])->name('settings.profile.edit');
     Route::put('/settings/profile', [ProfileController::class, 'update'])->name('settings.profile.update');
+
+    Route::get('/search', [\App\Http\Controllers\SearchController::class, 'index'])->name('search');
 
     Route::prefix('admin')->middleware('role:admin')->group(fn () => require base_path('routes/admin.php'));
     Route::prefix('officer')->middleware('role:officer')->group(fn () => require base_path('routes/officer.php'));

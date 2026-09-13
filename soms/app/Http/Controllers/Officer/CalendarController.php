@@ -3,19 +3,17 @@
 namespace App\Http\Controllers\Officer;
 
 use App\Http\Controllers\Controller;
-use App\Models\ActivityLog;
-use App\Models\CalendarEntry;
 use App\Models\Organization;
+use App\Support\EventTypes;
 use App\Support\OfficerPermission;
-use Illuminate\Http\Request;
 
 /**
  * Officer Calendar — see 08-Announcements-Calendar-Notifications.md.
  *
- * v4.0: only two entry types remain — SOMS Events (blue, from `events`,
- * spanning date_start..date_end) and Custom Entries (grey, from
- * calendar_entries). "Election Key Dates" and "Game Matchups" were
- * removed with their source tables.
+ * v4.1: Custom Entries (calendar_entries, the grey non-attendance markers)
+ * were fully removed — SOMS Events (from `events`) are now the only thing
+ * on this calendar. "Election Key Dates" and "Game Matchups" were already
+ * removed with their source tables back in v4.0.
  *
  * The page itself (index) is Blade + FullCalendar.js per spec, fed by
  * server-rendered JSON rather than a client-side fetch to the API route
@@ -39,107 +37,45 @@ class CalendarController extends Controller
         abort_unless(OfficerPermission::can(auth()->user(), 'view_calendar') || OfficerPermission::can(auth()->user(), 'manage_calendar'), 403);
 
         $orgId = $this->organizationId();
-        $canManage = OfficerPermission::can(auth()->user(), 'manage_calendar');
+        $canManageEvents = OfficerPermission::can(auth()->user(), 'manage_events');
 
         $events = $this->buildEventFeed($orgId);
-        $entries = CalendarEntry::where('organization_id', $orgId)->orderBy('date')->get();
+
+        // Security audit (Sep 2026): these are embedded straight into
+        // <script> blocks in the Blade view via {!! !!} (needed so
+        // FullCalendar/the quick-create modal get real JS objects, not
+        // escaped HTML entities). The HEX flags make that safe — event
+        // titles/venues are officer-entered free text, and without these
+        // flags a title containing `</script><script>` could break out of
+        // the tag. json_decode() on the Blade side (used for the
+        // server-rendered @foreach lists further up this same view) is
+        // unaffected — it transparently understands the \uXXXX escapes.
+        $jsonFlags = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
 
         return view('officer.calendar.index', [
-            'eventsJson' => $events->toJson(),
-            'entries'    => $entries,
-            'canManage'  => $canManage,
+            'eventsJson' => $events->toJson($jsonFlags),
+            'canManageEvents' => $canManageEvents,
+            'eventTypesJson' => json_encode(EventTypes::TYPES, $jsonFlags),
+            'foundationDayActivitiesJson' => json_encode(EventTypes::FOUNDATION_DAY_ACTIVITIES, $jsonFlags),
         ]);
     }
 
     /**
      * Shared data shape (also used by Api\Officer\CalendarController) —
-     * blue SOMS Events (date_start..date_end spans) + grey Custom Entries.
+     * blue SOMS Events (date_start..date_end spans).
      */
     public static function buildEventFeed(?int $orgId)
     {
-        $events = \App\Models\Event::where('organization_id', $orgId)
+        return \App\Models\Event::where('organization_id', $orgId)
             ->get()
             ->map(fn ($e) => [
                 'id'    => 'event-' . $e->id,
                 'title' => $e->title,
                 'start' => $e->date_start->toDateString(),
                 'end'   => $e->date_end->copy()->addDay()->toDateString(), // FullCalendar end is exclusive
-                'color' => '#5B5BF6', // blue — SOMS Events
+                'color' => $e->color ?? '#FF7A29', // officer-picked, falls back to the brand orange
                 'type'  => 'event',
-            ]);
-
-        $entries = CalendarEntry::where('organization_id', $orgId)
-            ->get()
-            ->map(fn ($ce) => [
-                'id'    => 'entry-' . $ce->id,
-                'title' => $ce->title,
-                'start' => $ce->date->toDateString(),
-                'color' => '#8C90A3', // grey — Custom Entries
-                'type'  => 'entry',
-            ]);
-
-        return $events->concat($entries)->values();
-    }
-
-    /**
-     * Add a custom entry — Executive/Administrative only.
-     */
-    public function store(Request $request)
-    {
-        abort_unless(OfficerPermission::can(auth()->user(), 'manage_calendar'), 403);
-
-        $data = $request->validate([
-            'title' => 'required|string|max:255',
-            'date'  => 'required|date',
-            'notes' => 'nullable|string',
-        ]);
-
-        $entry = CalendarEntry::create([
-            'organization_id' => $this->organizationId(),
-            'created_by'      => auth()->id(),
-            'title'           => $data['title'],
-            'date'            => $data['date'],
-            'notes'           => $data['notes'] ?? null,
-        ]);
-
-        ActivityLog::record(auth()->id(), 'calendar_entry_created', CalendarEntry::class, $entry->id, ['title' => $entry->title]);
-
-        return back()->with('status', 'Calendar entry added.');
-    }
-
-    /**
-     * Edit a custom entry — Executive/Administrative only.
-     */
-    public function update(Request $request, CalendarEntry $entry)
-    {
-        abort_unless(OfficerPermission::can(auth()->user(), 'manage_calendar'), 403);
-        abort_unless($entry->organization_id === $this->organizationId(), 404);
-
-        $data = $request->validate([
-            'title' => 'required|string|max:255',
-            'date'  => 'required|date',
-            'notes' => 'nullable|string',
-        ]);
-
-        $entry->update($data);
-
-        ActivityLog::record(auth()->id(), 'calendar_entry_updated', CalendarEntry::class, $entry->id, $data);
-
-        return back()->with('status', 'Calendar entry updated.');
-    }
-
-    /**
-     * Delete a custom entry — Executive/Administrative only.
-     */
-    public function destroy(CalendarEntry $entry)
-    {
-        abort_unless(OfficerPermission::can(auth()->user(), 'manage_calendar'), 403);
-        abort_unless($entry->organization_id === $this->organizationId(), 404);
-
-        ActivityLog::record(auth()->id(), 'calendar_entry_deleted', CalendarEntry::class, $entry->id, ['title' => $entry->title]);
-
-        $entry->delete();
-
-        return back()->with('status', 'Calendar entry removed.');
+            ])
+            ->values();
     }
 }

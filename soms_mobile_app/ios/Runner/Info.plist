@@ -25,9 +25,16 @@
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
+	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Used to set your profile photo.</string>
-	<true/>
+	<!-- Deploy-readiness fix (Sep 2026): mobile_scanner needs this or iOS
+	     kills the app the moment officer QR scanning tries to open the
+	     camera. Also fixed LSRequiresIPhoneOS above, which was missing
+	     its true value (a key tag was immediately followed by another
+	     key tag, which is invalid plist XML). -->
+	<key>NSCameraUsageDescription</key>
+	<string>Used to scan student ID QR codes for attendance.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

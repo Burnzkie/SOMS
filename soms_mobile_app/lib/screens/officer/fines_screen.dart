@@ -96,6 +96,18 @@ class _OfficerFineTile extends ConsumerWidget {
       'waived' => Colors.blueGrey,
       _ => Colors.orange,
     };
+    // Accessibility fix (Sep 2026) — Colors.green/.orange/.blueGrey as TEXT
+    // on white measured 2.16–4.37:1, under WCAG AA's 4.5:1 for normal text
+    // (same category of bug found and fixed in the web app's status badges).
+    // Darker same-hue variants for the actual status label; `color` above
+    // still drives the icon + its soft background tint, which don't need
+    // the same contrast ratio since the row's other text already conveys
+    // the status.
+    final textColor = switch (fine.status) {
+      'paid' => const Color(0xFF39843C),
+      'waived' => const Color(0xFF5C7885),
+      _ => const Color(0xFFA86400),
+    };
 
     return Card(
       child: ListTile(
@@ -115,7 +127,7 @@ class _OfficerFineTile extends ConsumerWidget {
                   PopupMenuItem(value: 'waive', child: Text('Waive')),
                 ],
               )
-            : Text(fine.status, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+            : Text(fine.status, style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.bold)),
       ),
     );
   }

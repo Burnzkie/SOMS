@@ -13,16 +13,16 @@ Route::get('/dashboard', [DashboardController::class, 'index'])->name('officer.d
 
 // Officer calendar -- see 08-Announcements-Calendar-Notifications.md.
 Route::get('/calendar', [CalendarController::class, 'index'])->name('officer.calendar.index');
-Route::post('/calendar', [CalendarController::class, 'store'])->name('officer.calendar.store');
-Route::put('/calendar/{entry}', [CalendarController::class, 'update'])->name('officer.calendar.update');
-Route::delete('/calendar/{entry}', [CalendarController::class, 'destroy'])->name('officer.calendar.destroy');
 
 // Events & attendance -- see 05-Attendance-Fines.md Part A.
 Route::get('/events', [EventController::class, 'index'])->name('officer.events.index');
 Route::get('/events/create', [EventController::class, 'create'])->name('officer.events.create');
 Route::post('/events', [EventController::class, 'store'])->name('officer.events.store');
 Route::get('/events/{event}', [EventController::class, 'show'])->name('officer.events.show');
+Route::patch('/events/{event}', [EventController::class, 'update'])->name('officer.events.update');
+Route::delete('/events/{event}', [EventController::class, 'destroy'])->name('officer.events.destroy');
 Route::post('/events/{event}/publish', [EventController::class, 'publish'])->name('officer.events.publish');
+Route::patch('/events/{event}/reschedule', [EventController::class, 'reschedule'])->name('officer.events.reschedule');
 Route::post('/events/{event}/fine-rules', [EventController::class, 'updateFineRules'])->name('officer.events.fine-rules');
 Route::post('/sessions/{session}', [EventController::class, 'updateSession'])->name('officer.sessions.update');
 

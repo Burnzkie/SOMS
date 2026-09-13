@@ -24,6 +24,67 @@
 @if(session('status'))
 <div class="banner" style="background:var(--emerald-soft); color:var(--emerald);">{{ session('status') }}</div>
 @endif
+@if(session('error'))
+<div class="banner" style="background:var(--rose-soft); color:var(--rose);">{{ session('error') }}</div>
+@endif
+
+<div class="panel">
+  <div class="panel-head"><h3>Event details</h3></div>
+  <form method="POST" action="{{ route('officer.events.update', $event) }}" enctype="multipart/form-data" style="margin-bottom:14px;">
+    @csrf
+    @method('PATCH')
+    <div class="field" style="margin-bottom:14px;">
+      <label style="font-size:11px; color:var(--text-muted);">Cover image <span style="font-weight:400;">(JPG, PNG or WEBP, max 2MB)</span></label>
+      <label for="eventImageInput" style="display:block; cursor:pointer; border:1px dashed var(--border-strong); border-radius:var(--radius-md); background:var(--surface-2); overflow:hidden; position:relative; max-width:260px;">
+        <img id="eventImagePreview" src="{{ $event->image_url }}" alt="" style="display:{{ $event->image_url ? 'block' : 'none' }}; width:100%; height:140px; object-fit:cover;">
+        <div id="eventImagePlaceholder" style="display:{{ $event->image_url ? 'none' : 'block' }}; padding:28px 12px; text-align:center; color:var(--text-faint); font-size:12.5px;">Click to upload a photo</div>
+      </label>
+      <input type="file" id="eventImageInput" name="image" accept="image/png,image/jpeg,image/webp" style="display:none;">
+    </div>
+    <div class="field" style="margin-bottom:14px;">
+      <label style="font-size:11px; color:var(--text-muted);">Calendar color</label>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <input type="color" name="color" id="colorInput" value="{{ old('color', $event->color ?? '#FF7A29') }}" style="width:44px; height:36px; padding:0; border:1px solid var(--border-strong); border-radius:8px; background:none; cursor:pointer;">
+        <div style="display:flex; gap:6px;" id="colorPresets">
+          @foreach(['#FF7A29','#8B7CF6','#1FC98D','#F5A623','#F5497A','#3B9EFF'] as $preset)
+          <button type="button" class="color-swatch" data-color="{{ $preset }}" style="width:22px; height:22px; border-radius:50%; background:{{ $preset }}; border:2px solid var(--border-strong); cursor:pointer; padding:0;"></button>
+          @endforeach
+        </div>
+      </div>
+    </div>
+    <div class="permission-grid" style="margin-bottom:14px;">
+      <div class="field">
+        <label style="font-size:11px; color:var(--text-muted);">Title</label>
+        <input type="text" name="title" value="{{ old('title', $event->title) }}" class="field-input" style="width:100%;" required>
+      </div>
+      <div class="field">
+        <label style="font-size:11px; color:var(--text-muted);">Type</label>
+        <select name="type" class="field-input" style="width:100%;">
+          @foreach($eventTypes as $value => $label)
+          <option value="{{ $value }}" {{ old('type', $event->type) === $value ? 'selected' : '' }}>{{ $label }}</option>
+          @endforeach
+        </select>
+      </div>
+      <div class="field">
+        <label style="font-size:11px; color:var(--text-muted);">Venue</label>
+        <input type="text" name="venue" value="{{ old('venue', $event->venue) }}" class="field-input" style="width:100%;">
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:14px;">
+      <label style="font-size:11px; color:var(--text-muted);">Description</label>
+      <textarea name="description" class="field-input" style="width:100%; min-height:56px;">{{ old('description', $event->description) }}</textarea>
+    </div>
+    <button class="btn btn-ghost" style="width:auto; padding:0 16px;">Save details</button>
+  </form>
+
+  <div style="border-top:1px solid var(--border); padding-top:14px;">
+    <form method="POST" action="{{ route('officer.events.destroy', $event) }}" onsubmit="return confirm('Delete &quot;{{ $event->title }}&quot; and everything under it (days, sessions, fine rules)? This can\'t be undone.');">
+      @csrf
+      @method('DELETE')
+      <button class="mini-btn reject" style="width:auto;">Delete event</button>
+    </form>
+  </div>
+</div>
 
 <div class="panel">
   <div class="panel-head"><h3>Fine amounts</h3></div>
@@ -107,6 +168,34 @@
   </div>
 </div>
 @endforeach
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const imageInput = document.getElementById('eventImageInput');
+  const imagePreview = document.getElementById('eventImagePreview');
+  const imagePlaceholder = document.getElementById('eventImagePlaceholder');
+  if (!imageInput) return;
+
+  imageInput.addEventListener('change', function () {
+    const file = imageInput.files && imageInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      imagePreview.src = e.target.result;
+      imagePreview.style.display = 'block';
+      imagePlaceholder.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  const colorInput = document.getElementById('colorInput');
+  document.querySelectorAll('#colorPresets .color-swatch').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      colorInput.value = btn.dataset.color;
+    });
+  });
+});
+</script>
 @endslot
 
 </x-layout>

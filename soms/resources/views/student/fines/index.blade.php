@@ -12,7 +12,9 @@
   </div>
 </div>
 
+@if($hasUnpaidFine)
 <div class="banner warn">Pay your fine in person at the Treasurer's office. Your fine will be marked Paid here once the Treasurer records your payment.</div>
+@endif
 
 <div class="panel">
   <form method="GET" class="filter-form">

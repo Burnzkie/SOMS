@@ -24,15 +24,15 @@
 </div>
 
 @unless ($treasurerActive)
-<div class="banner warn">⚠ No active Treasurer - Admin is the fallback for clearing/waiving fines until one is appointed.</div>
+<div class="banner warn" data-dismiss-key="admin-no-treasurer">⚠ No active Treasurer - Admin is the fallback for clearing/waiving fines until one is appointed.</div>
 @endunless
 
 @unless($logChainOk)
-  <div class="banner danger">⚠ Activity log chain integrity check failed - review immediately.</div>
+  <div class="banner danger" data-dismiss-key="admin-log-chain">⚠ Activity log chain integrity check failed - review immediately.</div>
   @endunless
 
   @if($queueStale)
-  <div class="banner warn">⚠ Fine-issuance queue worker hasn't reported in over 2 hours - check the Render worker process. See <a href="{{ route('admin.system-health') }}">system health</a>.</div>
+  <div class="banner warn" data-dismiss-key="admin-queue-stale">⚠ Fine-issuance queue worker hasn't reported in over 2 hours - check the Render worker process. See <a href="{{ route('admin.system-health') }}">system health</a>.</div>
   @endif
 
   <div class="stat-grid">

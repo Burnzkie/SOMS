@@ -23,8 +23,15 @@ class FineController extends Controller
 
         $fines = $query->orderByDesc('issued_at')->paginate(15)->withQueryString();
 
+        // Independent of whatever status filter is currently applied —
+        // the "go pay" banner should only show if there's an actual
+        // unpaid fine, not just because the Paid/Waived filter happens
+        // to return rows.
+        $hasUnpaidFine = $user->fines()->where('status', 'unpaid')->exists();
+
         return view('student.fines.index', [
             'fines' => $fines,
+            'hasUnpaidFine' => $hasUnpaidFine,
         ]);
     }
 }

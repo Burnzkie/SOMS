@@ -8,6 +8,7 @@ use App\Models\OfficerPosition;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Support\OfficerPermission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -51,7 +52,10 @@ class OfficerAppointmentController extends Controller {
                     'user_id' => 'required|exists:users,id',
                     'position_title' => 'required|in:' . implode(',', $this->positions),
                     'academic_year' => 'required|string',
+                    'permissions' => 'nullable|array',
+                    'permissions.*' => 'in:' . implode(',', array_keys(OfficerPermission::PERMISSIONS)),
                 ]);
+                $permissions = array_values($request->input('permissions', []));
                 $user = User::where('id', $request->user_id)->where('is_approved', true)->firstOrFail();
                     $org = Organization::first();
 
@@ -67,11 +71,12 @@ class OfficerAppointmentController extends Controller {
                             'This position is already actively held for this academic year. Revoke the current officer first.'
                     );
 
-                    DB::transaction(function () use ($user, $request, $org){
+                    DB::transaction(function () use ($user, $request, $org, $permissions){
                         OfficerPosition::create([
                             'user_id' => $user->id,
                             'organization_id' => $org?->id,
                             'position_title' => $request->position_title,
+                            'permissions' => $permissions,
                             'academic_year' => $request->academic_year,
                             'is_active' => true,
                             'appointed_at' => now(),

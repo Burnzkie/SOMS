@@ -1,4 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Deploy-readiness fix (Sep 2026): the debug/profile manifest overlays
+         (src/debug, src/profile) already declare INTERNET, which is why
+         `flutter run` and wireless-ADB testing worked fine, but a real
+         `flutter build apk` (release) uses ONLY this manifest, and without
+         this line a release build has zero network access, silently.
+         CAMERA is needed for mobile_scanner (officer QR attendance scan);
+         declaring it explicitly here too rather than relying on the
+         plugin's manifest merge. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
     <application
         android:label="soms_mobile"
         android:name="${applicationName}"

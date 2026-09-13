@@ -20,6 +20,7 @@ Route::post('/users/{user}/reject', [UserController::class, 'reject']);
 Route::get('/officers', [OfficerAppointmentController::class, 'index']);
 Route::post('/officers/appoint', [OfficerAppointmentController::class, 'store']);
 Route::post('/officers/{position}/revoke', [OfficerAppointmentController::class, 'revoke']);
+Route::put('/officers/{position}/permissions', [OfficerAppointmentController::class, 'updatePermissions']);
 
 Route::get('/reports', [ReportController::class, 'index']);
 Route::get('/activity-logs', [ActivityLogController::class, 'index']);

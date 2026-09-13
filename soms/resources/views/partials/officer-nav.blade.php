@@ -1,7 +1,7 @@
 <div class="nav-group">
     <div class="nav-label">Overview</div>
     <a href="{{ route('officer.dashboard') }}" class="nav-link @if(request()->routeIs('officer.dashboard')) active @endif">
-        <span class="ic"></span>
+        <span class="ic orange">🏠</span>
         Dashboard
     </a>
 </div>
@@ -14,28 +14,28 @@
 
     @if(($perms['manage_events'] ?? false) || ($perms['manage_attendance'] ?? false))
         <a href="{{ route('officer.events.index') }}" class="nav-link @if(request()->routeIs('officer.events.*') || request()->routeIs('officer.attendance.*')) active @endif">
-            <span class="ic"></span>
+            <span class="ic orange">📅</span>
             Events &amp; Attendance
         </a>
     @endif
 
     @if($treasurer)
         <a href="{{ route('officer.fines.index') }}" class="nav-link @if(request()->routeIs('officer.fines.*')) active @endif">
-            <span class="ic"></span>
+            <span class="ic green">💲</span>
             Fines
         </a>
     @endif
 
     @if(($perms['draft_announcements'] ?? false) || ($perms['manage_announcements'] ?? false))
         <a href="{{ route('officer.announcements.index') }}" class="nav-link @if(request()->routeIs('officer.announcements.*')) active @endif">
-            <span class="ic"></span>
+            <span class="ic amber">📣</span>
             Announcements
         </a>
     @endif
 
     @if(($perms['view_calendar'] ?? false) || ($perms['manage_calendar'] ?? false))
         <a href="{{ route('officer.calendar.index') }}" class="nav-link @if(request()->routeIs('officer.calendar.*')) active @endif">
-            <span class="ic"></span>
+            <span class="ic purple">🗓</span>
             Calendar
         </a>
     @endif
@@ -43,7 +43,7 @@
 
 <div class="nav-group">
     <a href="{{ route('settings.profile.edit') }}" class="nav-link @if(request()->routeIs('settings.*')) active @endif">
-        <span class="ic"></span>
+        <span class="ic">⚙️</span>
         Settings
     </a>
 </div>

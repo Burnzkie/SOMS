@@ -20,7 +20,7 @@ class OfficerAppointmentScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(officerAppointmentPanelProvider)),
         data: (data) {
-          final (positions, students, academicYear) = data;
+          final (positions, students, academicYear, availablePermissions) = data;
           return ListView(
             padding: const EdgeInsets.all(12),
             children: [
@@ -33,15 +33,29 @@ class OfficerAppointmentScreen extends ConsumerWidget {
                   child: ListTile(
                     leading: Icon(row.vacant ? Icons.person_off_outlined : Icons.badge_outlined),
                     title: Text(row.position),
-                    subtitle: Text(row.vacant ? 'Vacant' : '${row.officerName} · ${row.officerStudentId}'),
+                    subtitle: Text(
+                      row.vacant
+                          ? 'Vacant'
+                          : '${row.officerName} · ${row.officerStudentId} · ${row.permissions.length} permission${row.permissions.length == 1 ? '' : 's'}',
+                    ),
                     trailing: row.vacant
                         ? FilledButton.tonal(
                             onPressed: () => _openAppointSheet(context, ref, row.position, students, academicYear),
                             child: const Text('Appoint'),
                           )
-                        : OutlinedButton(
-                            onPressed: () => _confirmRevoke(context, ref, row),
-                            child: const Text('Revoke'),
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.tune),
+                                tooltip: 'Permissions',
+                                onPressed: () => _openPermissionsSheet(context, ref, row, availablePermissions),
+                              ),
+                              OutlinedButton(
+                                onPressed: () => _confirmRevoke(context, ref, row),
+                                child: const Text('Revoke'),
+                              ),
+                            ],
                           ),
                   ),
                 ),
@@ -112,6 +126,80 @@ class OfficerAppointmentScreen extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
       }
     }
+  }
+
+  /// Standalone "Permissions" checkbox editor — mobile counterpart to
+  /// admin/permissions/edit.blade.php. Kept as an action on this same
+  /// panel row (rather than a separate screen) since the mobile nav has
+  /// no room for a fourth admin tab; the web app keeps it separate only
+  /// because appointing/revoking and permission-editing felt noisy
+  /// combined into one desktop form — that reasoning doesn't carry over
+  /// to a single tappable row.
+  Future<void> _openPermissionsSheet(
+    BuildContext context,
+    WidgetRef ref,
+    OfficerPanelRow row,
+    Map<String, String> availablePermissions,
+  ) async {
+    if (row.positionId == null) return;
+    final selected = row.permissions.toSet();
+    bool submitting = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('${row.officerName} — permissions', style: Theme.of(ctx).textTheme.titleLarge),
+              Text(row.position, style: Theme.of(ctx).textTheme.bodySmall),
+              const SizedBox(height: 12),
+              ...availablePermissions.entries.map((entry) => CheckboxListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(entry.value),
+                    value: selected.contains(entry.key),
+                    onChanged: (checked) => setSheetState(() {
+                      if (checked == true) {
+                        selected.add(entry.key);
+                      } else {
+                        selected.remove(entry.key);
+                      }
+                    }),
+                  )),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: submitting
+                    ? null
+                    : () async {
+                        setSheetState(() => submitting = true);
+                        final api = ref.read(apiClientProvider);
+                        try {
+                          await api.put('/admin/officers/${row.positionId}/permissions', data: {
+                            'permissions': selected.toList(),
+                          });
+                          ref.invalidate(officerAppointmentPanelProvider);
+                          if (ctx.mounted) Navigator.pop(ctx);
+                        } on ApiException catch (e) {
+                          setSheetState(() => submitting = false);
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(e.message)));
+                          }
+                        }
+                      },
+                child: submitting
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Save permissions'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _confirmRevoke(BuildContext context, WidgetRef ref, OfficerPanelRow row) async {

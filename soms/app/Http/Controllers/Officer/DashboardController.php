@@ -3,29 +3,37 @@
 namespace App\Http\Controllers\Officer;
 
 use App\Http\Controllers\Controller;
+use App\Models\Announcement;
+use App\Models\Event;
+use App\Models\Fine;
+use App\Models\Organization;
+use App\Models\User;
 use App\Support\OfficerPermission;
 
 class DashboardController extends Controller
 {
+    protected function organizationId(): ?int
+    {
+        $user = auth()->user();
+
+        return $user->activeOfficerPosition?->organization_id
+            ?? Organization::query()->value('id');
+    }
+
     /**
-     * Officer landing page — shows the officer's position/tier and which
-     * permission-gated modules they can access, per 04-Officer-Permissions-Members.md.
-     * Quick-links panel only ever links to routes the officer's tier
-     * actually has access to.
+     * Officer landing page — shows the officer's position, permission-gated
+     * quick links, and (new) an at-a-glance overview: live counts, the
+     * next upcoming event (with cover image, if one was uploaded), and
+     * the latest announcement. Counts/feature content are read-only
+     * summaries; the permission-gated quick-links panel below still
+     * governs what the officer can actually click into, per
+     * 04-Officer-Permissions-Members.md.
      */
     public function index()
     {
         $user = auth()->user();
         $position = $user->activeOfficerPosition;
-        $tier = OfficerPermission::tier($user);
-
-        // If $position is null (revoked/expired/never assigned), $tier is
-        // now correctly null too. The view already guards the tier badge
-        // with @if($position), and every entry in $permissions below
-        // resolves to false via OfficerPermission::can() when $tier is
-        // null — so an officer-role account with no active position lands
-        // on a dashboard with zero permissions granted, rather than
-        // silently getting PublicRelations-tier access.
+        $orgId = $this->organizationId();
 
         $permissions = [
             'manage_events'        => OfficerPermission::can($user, 'manage_events'),
@@ -38,14 +46,42 @@ class DashboardController extends Controller
             'view_reports'         => OfficerPermission::can($user, 'view_reports'),
         ];
 
-        // Fines are a position-level exception, not tier-level — see 05-Attendance-Fines.md Part D.
         $isTreasurer = OfficerPermission::isTreasurer($user);
 
+        $stats = [
+            'upcoming_events' => Event::where('organization_id', $orgId)
+                ->where('date_end', '>=', now()->toDateString())
+                ->count(),
+            'active_members' => User::approved()
+                ->whereHas('organizationMemberships', fn ($q) => $q->where('organization_id', $orgId))
+                ->count(),
+            'pending_fines' => Fine::where('status', 'unpaid')
+                ->whereHas('event', fn ($q) => $q->where('organization_id', $orgId))
+                ->count(),
+            'new_announcements' => Announcement::where('organization_id', $orgId)
+                ->where('is_published', true)
+                ->where('created_at', '>=', now()->subDays(7))
+                ->count(),
+        ];
+
+        $upcomingEvent = Event::where('organization_id', $orgId)
+            ->where('is_published', true)
+            ->where('date_end', '>=', now()->toDateString())
+            ->orderBy('date_start')
+            ->first();
+
+        $latestAnnouncement = Announcement::where('organization_id', $orgId)
+            ->where('is_published', true)
+            ->orderByDesc('created_at')
+            ->first();
+
         return view('officer.dashboard', [
-            'position'    => $position,
-            'tier'        => $tier,
-            'permissions' => $permissions,
-            'isTreasurer' => $isTreasurer,
+            'position'           => $position,
+            'permissions'        => $permissions,
+            'isTreasurer'        => $isTreasurer,
+            'stats'              => $stats,
+            'upcomingEvent'      => $upcomingEvent,
+            'latestAnnouncement' => $latestAnnouncement,
         ]);
     }
 }

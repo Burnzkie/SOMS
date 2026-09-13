@@ -24,9 +24,10 @@ final userActivityLogProvider =
   return Paginated.fromJson(res['data'] as Map<String, dynamic>, ActivityLogEntry.fromJson);
 });
 
-/// { panel: List<OfficerPanelRow>, approvedStudents: List<ApprovedStudent>, academicYear: String }
-final officerAppointmentPanelProvider =
-    FutureProvider.autoDispose<(List<OfficerPanelRow>, List<ApprovedStudent>, String)>((ref) async {
+/// { panel: List<OfficerPanelRow>, approvedStudents: List<ApprovedStudent>,
+///   academicYear: String, availablePermissions: Map<key, label> }
+final officerAppointmentPanelProvider = FutureProvider.autoDispose<
+    (List<OfficerPanelRow>, List<ApprovedStudent>, String, Map<String, String>)>((ref) async {
   final api = ref.watch(apiClientProvider);
   final res = await api.get('/admin/officers');
   final data = res['data'] as Map<String, dynamic>;
@@ -36,7 +37,9 @@ final officerAppointmentPanelProvider =
   final students = (data['approvedStudents'] as List<dynamic>? ?? [])
       .map((e) => ApprovedStudent.fromJson(e as Map<String, dynamic>))
       .toList();
-  return (panel, students, data['academicYear'] as String? ?? '');
+  final availablePermissions = (data['availablePermissions'] as Map<String, dynamic>? ?? {})
+      .map((k, v) => MapEntry(k, v.toString()));
+  return (panel, students, data['academicYear'] as String? ?? '', availablePermissions);
 });
 
 final activityLogsProvider = FutureProvider.autoDispose<(Paginated<ActivityLogEntry>, bool)>((ref) async {

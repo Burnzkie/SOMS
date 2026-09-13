@@ -14,6 +14,7 @@ class OfficerPosition extends Model
         'user_id',
         'organization_id',
         'position_title',
+        'permissions',
         'academic_year',
         'is_active',
         'appointed_at',
@@ -21,6 +22,7 @@ class OfficerPosition extends Model
     ];
 
     protected $casts = [
+        'permissions'  => 'array',
         'is_active'    => 'boolean',
         'appointed_at' => 'datetime',
     ];

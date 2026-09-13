@@ -19,6 +19,11 @@ return Application::configure(basePath: dirname(__DIR__))
         'role'                     => \App\Http\Middleware\RoleMiddleware::class,
     ]);
 
+        // Security audit (Sep 2026) — baseline headers (CSP, X-Frame-Options,
+        // X-Content-Type-Options, Referrer-Policy, Permissions-Policy, HSTS
+        // on HTTPS) on every response, web and API alike.
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
         // Render terminates SSL upstream and forwards requests over plain
         // HTTP internally. Without this, Laravel doesn't know the original
         // request was HTTPS, so it generates http:// URLs (form actions,

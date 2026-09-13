@@ -13,12 +13,16 @@
   --ease:cubic-bezier(.4,0,.2,1);
   --font-ui:'Inter',system-ui,sans-serif;
   --font-display:'Inter Tight','Inter',system-ui,sans-serif;
-  --primary:#5B5BF6; --violet:#9B5CF6; --emerald:#1FC98D; --rose:#F5497A;
-  --bg:#0A0B10; --text:#EDEEF4; --text-muted:#8C90A3; --text-faint:#5C6075;
+  /* Login/register stays a dramatic dark glass card over a blurred color
+     mesh — deliberately distinct from the light app interior (see
+     components/layout.blade.php), retinted to the same blue/purple/
+     emerald "lively" palette so the brand still reads as one system. */
+  --primary:#2563EB; --violet:#4F7DF3; --emerald:#10B981; --rose:#F43F5E;
+  --bg:#070B18; --text:#F3F5FC; --text-muted:#97A3C4; --text-faint:#6B77A0;
   --border-strong:rgba(255,255,255,.14);
   --shadow-lg: 0 24px 60px rgba(0,0,0,.55);
-  --glass-bg: rgba(20,22,32,.55);
-  --mesh-1:#5B5BF6; --mesh-2:#9B5CF6; --mesh-3:#1FC98D;
+  --glass-bg: rgba(20,26,46,.55);
+  --mesh-1:#2563EB; --mesh-2:#8B5CF6; --mesh-3:#10B981;
 }
 *{box-sizing:border-box;}
 body{
@@ -44,9 +48,12 @@ a{color:inherit; text-decoration:none;}
   box-shadow:var(--shadow-lg);
 }
 .auth-logo{
-  width:44px; height:44px; border-radius:12px; margin-bottom:22px;
+  width:64px; height:64px; border-radius:16px; margin:0 auto 22px auto;
   background:linear-gradient(135deg,var(--primary),var(--violet));
-  display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; font-size:15px;
+  display:flex; align-items:center; justify-content:center; padding:4px;
+}
+.auth-logo img{
+  width:100%; height:100%; border-radius:12px; object-fit:cover;
 }
 .auth-card h2{font-size:24px; margin-bottom:6px;}
 .auth-card .sub{color:var(--text-muted); font-size:13px; margin-bottom:24px;}
@@ -69,13 +76,13 @@ a{color:inherit; text-decoration:none;}
 .btn:active{transform:scale(.98);}
 .btn-primary{
   background:linear-gradient(135deg,var(--primary),var(--violet)); color:#fff;
-  box-shadow:0 10px 30px rgba(91,91,246,.35);
+  box-shadow:0 10px 30px rgba(37,99,235,.35);
 }
 .auth-foot{margin-top:22px; text-align:center; font-size:12px; color:var(--text-muted);}
 .auth-foot a{color:var(--primary); font-weight:600;}
 .alert{padding:12px 14px; border-radius:var(--radius-md); font-size:12.5px; margin-bottom:18px;}
-.alert-success{background:rgba(31,201,141,.14); color:var(--emerald); border:1px solid rgba(31,201,141,.3);}
-.alert-error{background:rgba(245,73,122,.14); color:var(--rose); border:1px solid rgba(245,73,122,.3);}
+.alert-success{background:rgba(16,185,129,.14); color:var(--emerald); border:1px solid rgba(16,185,129,.3);}
+.alert-error{background:rgba(244,63,94,.14); color:var(--rose); border:1px solid rgba(244,63,94,.3);}
 
 
 @media (max-width: 420px){
@@ -89,7 +96,7 @@ a{color:inherit; text-decoration:none;}
 <body>
 <div class="mesh"></div>
 <div class="auth-card">
-  <div class="auth-logo">S</div>
+  <div class="auth-logo"><img src="{{ asset('images/logo.png') }}" alt="SOMS"></div>
   {{ $content ?? '' }}
 </div>
 </body>

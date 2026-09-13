@@ -24,8 +24,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         'data' => config('academic_programs', []),
     ]));
 
-    Route::post('/auth/login', [LoginController::class, 'login']);
-    Route::post('/auth/register', [RegisterController::class, 'register']);
+    Route::post('/auth/login', [LoginController::class, 'login'])->middleware('throttle:login');
+    Route::post('/auth/register', [RegisterController::class, 'register'])->middleware('throttle:register');
     Route::post('/auth/forgot-password', [ForgotPasswordController::class, 'sendResetLink'])
         ->middleware('throttle:password-reset');
     Route::post('/auth/reset-password', [ForgotPasswordController::class, 'reset']);

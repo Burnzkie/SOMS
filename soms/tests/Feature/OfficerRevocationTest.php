@@ -14,7 +14,7 @@ class OfficerRevocationTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function makeActiveOfficer(string $positionTitle = 'Secretary'): array
+    protected function makeActiveOfficer(string $positionTitle = 'Secretary', array $permissions = []): array
     {
         $org = Organization::create([
             'name' => 'Student Government Organization',
@@ -29,6 +29,7 @@ class OfficerRevocationTest extends TestCase
             'user_id' => $officer->id,
             'organization_id' => $org->id,
             'position_title' => $positionTitle,
+            'permissions' => $permissions,
             'academic_year' => '2026-2027',
             'is_active' => true,
             'appointed_at' => now(),
@@ -58,22 +59,22 @@ class OfficerRevocationTest extends TestCase
     }
 
     /**
-     * Ties the revoke fix directly to the tier() fix: once revoked, the
-     * officer must immediately lose every PublicRelations-tier permission
-     * too, not just have their role column changed.
+     * Ties the revoke fix directly to permission checks: once revoked,
+     * the officer must immediately lose every permission admin had
+     * checked for them, not just have their role column changed.
      */
-    public function test_revoked_officer_immediately_loses_officer_tier_permissions(): void
+    public function test_revoked_officer_immediately_loses_granted_permissions(): void
     {
         $admin = User::factory()->admin()->create();
-        [$officer, $position] = $this->makeActiveOfficer('Public Relations Officer');
+        [$officer, $position] = $this->makeActiveOfficer('Public Relations Officer', ['draft_announcements', 'view_calendar']);
 
-        $this->assertSame('PublicRelations', OfficerPermission::tier($officer->fresh()));
+        $this->assertTrue(OfficerPermission::can($officer->fresh(), 'draft_announcements'));
 
         $this->actingAs($admin)->post(route('admin.officers.revoke', $position));
 
         $revoked = $officer->fresh();
-        $this->assertNull(OfficerPermission::tier($revoked));
         $this->assertFalse(OfficerPermission::can($revoked, 'draft_announcements'));
+        $this->assertFalse(OfficerPermission::can($revoked, 'view_calendar'));
     }
 
     public function test_revoking_an_already_inactive_position_is_rejected(): void

@@ -57,20 +57,26 @@ class AdminLogsScreen extends ConsumerWidget {
             error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(activityLogsProvider)),
             data: (data) {
               final (page, chainOk) = data;
-              if (!chainOk) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Text(
-                    '⚠ Chain integrity check failed on this page of results.',
-                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                  ),
+              // Fix (Sep 2026) — this used to `return` here, replacing the
+              // ENTIRE log list with just this warning text whenever the
+              // chain check failed. That's exactly backwards: a failed
+              // integrity check is when reviewing the actual entries
+              // matters most, and this was hiding them at precisely that
+              // moment. Now it's a banner ABOVE the list, and the list
+              // (page.data) always renders below it regardless of chainOk.
+              if (page.data.isEmpty) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (!chainOk) const _ChainWarningBanner(),
+                    const EmptyStateView(message: 'No activity yet.', icon: Icons.receipt_long_outlined),
+                  ],
                 );
               }
-              if (page.data.isEmpty) {
-                return const EmptyStateView(message: 'No activity yet.', icon: Icons.receipt_long_outlined);
-              }
               return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (!chainOk) const _ChainWarningBanner(),
                   for (final entry in page.data)
                     ListTile(
                       dense: true,
@@ -90,6 +96,21 @@ class AdminLogsScreen extends ConsumerWidget {
   }
 }
 
+class _ChainWarningBanner extends StatelessWidget {
+  const _ChainWarningBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(bottom: 8),
+      child: Text(
+        '⚠ Chain integrity check failed on this page of results — entries below could not be verified.',
+        style: TextStyle(color: Color(0xFFE51B0D), fontWeight: FontWeight.bold, fontSize: 12.5),
+      ),
+    );
+  }
+}
+
 class _StatusRow extends StatelessWidget {
   const _StatusRow({required this.ok, required this.okLabel, required this.badLabel});
 
@@ -99,7 +120,11 @@ class _StatusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = ok ? Colors.green : Colors.red;
+    // Accessibility fix (Sep 2026) — Colors.green/Colors.red rendered as
+    // actual status text here (not just an icon), measuring 2.78:1 / 3.68:1
+    // on white — under WCAG AA's 4.5:1. Darker same-hue variants, consistent
+    // with the fix applied to the fines screens.
+    final color = ok ? const Color(0xFF39843C) : const Color(0xFFE51B0D);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(

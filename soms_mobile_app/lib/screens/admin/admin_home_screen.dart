@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../widgets/role_shell.dart';
+import 'admin_dashboard_screen.dart';
 import 'logs_screen.dart';
 import 'officer_appointment_screen.dart';
 import 'reports_screen.dart';
@@ -14,6 +15,7 @@ class AdminHomeScreen extends StatelessWidget {
     return const RoleShell(
       title: 'SOMS — Admin',
       items: [
+        RoleNavItem(label: 'Dashboard', icon: Icons.dashboard_outlined, builder: _dashboard),
         RoleNavItem(label: 'Users', icon: Icons.people_outline, builder: _users),
         RoleNavItem(label: 'Officers', icon: Icons.badge_outlined, builder: _officers),
         RoleNavItem(label: 'Reports', icon: Icons.picture_as_pdf_outlined, builder: _reports),
@@ -22,6 +24,7 @@ class AdminHomeScreen extends StatelessWidget {
     );
   }
 
+  static Widget _dashboard(BuildContext ctx) => const AdminDashboardScreen();
   static Widget _users(BuildContext ctx) => const AdminUsersScreen();
   static Widget _officers(BuildContext ctx) => const OfficerAppointmentScreen();
   static Widget _reports(BuildContext ctx) => const AdminReportsScreen();

@@ -13,7 +13,7 @@ class OfficerPermissionTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function makeOfficer(string $positionTitle): User
+    protected function makeOfficer(string $positionTitle, array $permissions = [], bool $isActive = true): User
     {
         $org = Organization::create([
             'name' => 'Student Government Organization',
@@ -28,65 +28,18 @@ class OfficerPermissionTest extends TestCase
             'user_id' => $user->id,
             'organization_id' => $org->id,
             'position_title' => $positionTitle,
+            'permissions' => $permissions,
             'academic_year' => '2026-2027',
-            'is_active' => true,
+            'is_active' => $isActive,
             'appointed_at' => now(),
         ]);
 
         return $user->fresh();
     }
 
-    public function test_tier_resolves_correctly_for_each_officer_position(): void
-    {
-        $this->assertSame('Executive', OfficerPermission::tier($this->makeOfficer('President')));
-        $this->assertSame('Executive', OfficerPermission::tier($this->makeOfficer('Vice President')));
-        $this->assertSame('Administrative', OfficerPermission::tier($this->makeOfficer('Secretary')));
-        $this->assertSame('Administrative', OfficerPermission::tier($this->makeOfficer('Treasurer')));
-        $this->assertSame('Administrative', OfficerPermission::tier($this->makeOfficer('Auditor')));
-        $this->assertSame('PublicRelations', OfficerPermission::tier($this->makeOfficer('Public Relations Officer')));
-    }
-
     /**
-     * Direct regression test for the bug fixed in this project: tier()
-     * used to fall through to the string 'PublicRelations' for any user
-     * with no active officer position at all, silently granting
-     * draft_announcements/view_dashboard/view_calendar to plain students
-     * and revoked officers. It must return null instead.
-     */
-    public function test_tier_returns_null_for_a_plain_student_with_no_officer_position(): void
-    {
-        $student = User::factory()->create();
-
-        $this->assertNull(OfficerPermission::tier($student));
-    }
-
-    public function test_tier_returns_null_for_an_officer_role_account_whose_position_was_deactivated(): void
-    {
-        $org = Organization::create([
-            'name' => 'Student Government Organization',
-            'department' => 'All Departments',
-            'academic_year' => '2026-2027',
-            'is_active' => true,
-        ]);
-
-        $user = User::factory()->officer()->create();
-
-        OfficerPosition::create([
-            'user_id' => $user->id,
-            'organization_id' => $org->id,
-            'position_title' => 'Public Relations Officer',
-            'academic_year' => '2026-2027',
-            'is_active' => false, // revoked / term ended
-            'appointed_at' => now()->subMonths(6),
-        ]);
-
-        $this->assertNull(OfficerPermission::tier($user->fresh()));
-    }
-
-    /**
-     * The practical consequence of the bug above: can() must deny a
-     * PublicRelations-tier permission for a user with no tier, not
-     * silently grant it.
+     * Regression test: can() must deny for a user with no active officer
+     * position at all — no implicit access for any position title.
      */
     public function test_can_denies_permission_for_a_user_with_no_active_position(): void
     {
@@ -97,14 +50,31 @@ class OfficerPermissionTest extends TestCase
         $this->assertFalse(OfficerPermission::can($student, 'view_calendar'));
     }
 
-    public function test_can_grants_permission_matching_the_officers_tier(): void
+    public function test_can_denies_permission_for_an_officer_role_account_whose_position_was_deactivated(): void
     {
-        $treasurer = $this->makeOfficer('Treasurer');
+        $user = $this->makeOfficer('Public Relations Officer', ['view_calendar'], isActive: false);
 
-        $this->assertTrue(OfficerPermission::can($treasurer, 'manage_attendance'));
-        $this->assertTrue(OfficerPermission::can($treasurer, 'view_reports'));
-        // Administrative tier does not include manage_announcements (Executive only).
-        $this->assertFalse(OfficerPermission::can($treasurer, 'manage_announcements'));
+        $this->assertFalse(OfficerPermission::can($user, 'view_calendar'));
+    }
+
+    /**
+     * Access now comes only from admin's checked boxes on the officer's
+     * active position — not from position title/tier.
+     */
+    public function test_can_grants_only_the_permissions_admin_checked(): void
+    {
+        $officer = $this->makeOfficer('Secretary', ['manage_attendance', 'view_reports']);
+
+        $this->assertTrue(OfficerPermission::can($officer, 'manage_attendance'));
+        $this->assertTrue(OfficerPermission::can($officer, 'view_reports'));
+        $this->assertFalse(OfficerPermission::can($officer, 'manage_announcements'));
+    }
+
+    public function test_can_denies_a_permission_no_officer_has_been_granted(): void
+    {
+        $officer = $this->makeOfficer('President', []);
+
+        $this->assertFalse(OfficerPermission::can($officer, 'manage_events'));
     }
 
     public function test_is_treasurer_is_true_only_for_the_active_treasurer(): void

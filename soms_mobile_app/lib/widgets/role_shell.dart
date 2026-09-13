@@ -34,7 +34,17 @@ class _RoleShellState extends ConsumerState<RoleShell> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(7),
+              child: Image.asset('assets/images/logo.png', width: 26, height: 26, fit: BoxFit.cover),
+            ),
+            const SizedBox(width: 10),
+            Text(widget.title),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),

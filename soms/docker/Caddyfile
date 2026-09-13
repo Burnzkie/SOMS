@@ -1,0 +1,36 @@
+# docker/Caddyfile
+# Roadmap Phase 2.1 — minimal FrankenPHP config: serve Laravel's public/
+# directory, bind to Render's injected $PORT, run PHP through the built-in
+# php_server directive (php-fpm-equivalent, handled internally by
+# FrankenPHP — no separate FPM process to manage).
+
+{
+	auto_https off
+	admin off
+
+	# Deploy-readiness fix (Sep 2026): FrankenPHP defaults to 2x CPU cores,
+	# which is unbounded from this file's point of view and was previously
+	# not enforced anywhere despite SystemHealthController documenting an
+	# assumed "pooled max: 4" against Clever Cloud's hard 5-connection cap.
+	# Each PHP thread can hold its own DB connection, so pin this web
+	# service to 4 threads -- leaving exactly 1 connection of headroom for
+	# the separate soms-queue-worker service (render.yaml), which holds 1.
+	# 4 (web) + 1 (worker) = 5 = the cap, with zero spare margin, so this
+	# number must move in lockstep with render.yaml if the worker service
+	# is ever scaled beyond a single instance.
+	frankenphp {
+		num_threads 4
+	}
+}
+
+:{$PORT} {
+	root * /var/www/html/public
+	encode gzip
+
+	@notFound not_found
+	handle @notFound {
+		respond 404
+	}
+
+	php_server
+}

@@ -8,6 +8,7 @@ use App\Models\OfficerPosition;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Support\OfficerPermission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -44,9 +45,15 @@ class OfficerAppointmentController extends Controller
             ->keyBy('position_title');
 
         $panel = collect($this->positions)->map(fn ($position) => [
-            'position' => $position,
-            'officer'  => $activeByPosition->get($position)?->user,
-            'vacant'   => !$activeByPosition->has($position),
+            'position'    => $position,
+            // officer_positions row id -- needed client-side for revoke
+            // and updatePermissions, both of which route on it rather
+            // than on user_id. Without this the mobile "Officer
+            // Appointment" screen has no way to target either action.
+            'position_id' => $activeByPosition->get($position)?->id,
+            'officer'     => $activeByPosition->get($position)?->user,
+            'vacant'      => !$activeByPosition->has($position),
+            'permissions' => $activeByPosition->get($position)?->permissions ?? [],
         ]);
 
         $approvedStudents = User::where('role', 'student')->where('is_approved', true)->orderBy('name')->get();
@@ -55,6 +62,7 @@ class OfficerAppointmentController extends Controller
             'panel'            => $panel,
             'approvedStudents' => $approvedStudents,
             'academicYear'     => $academicYear,
+            'availablePermissions' => OfficerPermission::PERMISSIONS,
         ]]);
     }
 
@@ -66,7 +74,10 @@ class OfficerAppointmentController extends Controller
             'user_id'         => 'required|exists:users,id',
             'position_title'  => 'required|in:' . implode(',', $this->positions),
             'academic_year'   => 'required|string',
+            'permissions'     => 'nullable|array',
+            'permissions.*'   => 'in:' . implode(',', array_keys(OfficerPermission::PERMISSIONS)),
         ]);
+        $permissions = array_values($data['permissions'] ?? []);
 
         $user = User::where('id', $data['user_id'])->where('is_approved', true)->firstOrFail();
         $org = Organization::first();
@@ -86,11 +97,12 @@ class OfficerAppointmentController extends Controller
             'This position is already actively held for this academic year. Revoke the current officer first.'
         );
 
-        DB::transaction(function () use ($user, $data, $org) {
+        DB::transaction(function () use ($user, $data, $org, $permissions) {
             OfficerPosition::create([
                 'user_id'         => $user->id,
                 'organization_id' => $org?->id,
                 'position_title'  => $data['position_title'],
+                'permissions'     => $permissions,
                 'academic_year'   => $data['academic_year'],
                 'is_active'       => true,
                 'appointed_at'    => now(),
@@ -134,5 +146,30 @@ class OfficerAppointmentController extends Controller
         NotificationService::send($position->user_id, 'officer_term_ended', ['position' => $position->position_title]);
 
         return response()->json(['success' => true, 'message' => 'Officer revoked.']);
+    }
+
+    /**
+     * Mobile counterpart to Http\Controllers\Admin\OfficerAppointmentController::updatePermissions().
+     */
+    public function updatePermissions(Request $request, OfficerPosition $position)
+    {
+        $this->authorize('appoint', OfficerPosition::class);
+
+        abort_unless($position->is_active, 422, 'This officer position is not currently active.');
+
+        $data = $request->validate([
+            'permissions'   => 'nullable|array',
+            'permissions.*' => 'in:' . implode(',', array_keys(OfficerPermission::PERMISSIONS)),
+        ]);
+
+        $position->update(['permissions' => array_values($data['permissions'] ?? [])]);
+
+        ActivityLog::record(auth()->id(), 'officer_permissions_updated', OfficerPosition::class, $position->id, [
+            'user_id'     => $position->user_id,
+            'position'    => $position->position_title,
+            'permissions' => $position->permissions,
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Permissions updated.', 'data' => $position]);
     }
 }

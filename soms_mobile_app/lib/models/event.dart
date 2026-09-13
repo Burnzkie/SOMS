@@ -40,6 +40,37 @@ class EventSession {
       );
 }
 
+/// A student/officer granted scan+override access to one specific
+/// session without being Executive/Administrative tier — see
+/// Api\Officer\AttendanceDelegateController and
+/// AttendanceSessionPolicy::isDelegate.
+class SessionDelegate {
+  const SessionDelegate({
+    required this.id,
+    required this.eventSessionId,
+    required this.userId,
+    this.userName,
+    this.userStudentId,
+  });
+
+  final int id;
+  final int eventSessionId;
+  final int userId;
+  final String? userName;
+  final String? userStudentId;
+
+  factory SessionDelegate.fromJson(Map<String, dynamic> json) {
+    final user = json['user'] as Map<String, dynamic>?;
+    return SessionDelegate(
+      id: json['id'] as int,
+      eventSessionId: json['event_session_id'] as int,
+      userId: json['user_id'] as int,
+      userName: user?['name'] as String?,
+      userStudentId: user?['student_id'] as String?,
+    );
+  }
+}
+
 class EventDay {
   const EventDay({required this.id, required this.date, this.label, required this.sessions});
 
@@ -65,6 +96,8 @@ class SomsEvent {
     this.description,
     this.venue,
     required this.type,
+    this.imageUrl,
+    this.color,
     required this.dateStart,
     required this.dateEnd,
     required this.hasParade,
@@ -77,7 +110,9 @@ class SomsEvent {
   final String title;
   final String? description;
   final String? venue;
-  final String type; // foundation_day | other
+  final String type; // see App\Support\EventTypes — kEventTypePresets in calendar_screen.dart mirrors this list
+  final String? imageUrl;
+  final String? color;
   final String dateStart;
   final String dateEnd;
   final bool hasParade;
@@ -91,6 +126,8 @@ class SomsEvent {
         description: json['description'] as String?,
         venue: json['venue'] as String?,
         type: json['type'] as String? ?? 'other',
+        imageUrl: json['image_url'] as String?,
+        color: json['color'] as String?,
         dateStart: json['date_start'] as String? ?? '',
         dateEnd: json['date_end'] as String? ?? '',
         hasParade: json['has_parade'] as bool? ?? false,

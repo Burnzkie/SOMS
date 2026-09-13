@@ -169,7 +169,15 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // Roadmap Phase 1.4 — previously defaulted to null (unset), which does
+    // NOT force the secure flag on. Since APP_ENV is fixed per-deploy (not
+    // per-request), it's safe to key off it here even under config:cache
+    // (unlike request()->isSecure(), which would freeze to the CLI's
+    // non-secure value at cache time). Render terminates HTTPS at the edge
+    // and forwards over HTTP, so URL::forceScheme() handles link generation
+    // separately (see AppServiceProvider) — this only affects the cookie's
+    // Secure attribute.
+    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
 
     /*
     |--------------------------------------------------------------------------

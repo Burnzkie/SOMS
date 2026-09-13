@@ -20,7 +20,7 @@
     <div class="panel-head"><h3>Positions</h3></div>
 
     @foreach($panel as $row)
-    <div class="queue-item">
+    <div class="queue-item" style="flex-direction:column; align-items:stretch; gap:8px;">
         <div class="who">
             <b>{{$row['position']}}</b>
             <span>
@@ -32,7 +32,7 @@
             </span>
         </div>
         @if($row['vacant'])
-        <form method="POST" action="{{ route('admin.officers.appoint') }}" class="queue-actions">
+        <form method="POST" action="{{ route('admin.officers.appoint') }}" class="queue-actions" style="flex-wrap:wrap; gap:10px;">
             @csrf
             <input type="hidden" name="position_title" value="{{ $row['position'] }}">
             <input type="hidden" name="academic_year" value="{{ $academicYear }}">
@@ -42,6 +42,7 @@
                 <option value="{{ $student->id }}">{{$student->name}} ({{ $student->student_id }})</option>
                 @endforeach
             </select>
+
             <button type="submit" class="mini-btn approve">Appoint</button>
         </form>
         @else
