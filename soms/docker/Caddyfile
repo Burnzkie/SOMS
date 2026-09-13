@@ -27,10 +27,20 @@
 	root * /var/www/html/public
 	encode gzip
 
-	@notFound not_found
-	handle @notFound {
-		respond 404
-	}
-
+	# Deploy-readiness fix (Sep 2026): removed a custom `@notFound not_found`
+	# matcher block that was here. `not_found` isn't a real Caddy matcher
+	# module, so this failed config validation outright ("module not
+	# registered: http.matchers.not_found") -- it just hadn't surfaced yet
+	# because the setcap/exec issue was killing the deploy before Caddy got
+	# this far. It also wasn't needed: php_server below already does the
+	# standard Laravel front-controller dance on its own (serve the file if
+	# it exists on disk, otherwise route to index.php) -- this is the
+	# officially documented minimal FrankenPHP+Laravel Caddyfile
+	# (https://frankenphp.dev/docs/laravel/). A blanket "no file? respond
+	# 404" placed before php_server would have caught nearly every real
+	# Laravel route (none of them are actual files on disk) and returned a
+	# bare Caddy 404 instead of ever reaching Laravel's own router --
+	# Laravel's exception handler already returns proper 404s for routes
+	# that genuinely don't exist.
 	php_server
 }
