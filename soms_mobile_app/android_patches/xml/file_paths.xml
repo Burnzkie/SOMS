@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Matches UpdateService.downloadApk()'s save location
+         (getApplicationSupportDirectory()). Only used if the manual
+         FileProvider fallback in MANIFEST_ADDITIONS.md is needed. -->
+    <files-path name="app_support" path="."/>
+</paths>
