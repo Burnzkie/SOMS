@@ -1,7 +1,7 @@
 name: soms_mobile
 description: SOMS — SGO Edition mobile app (Student Organization Management System)
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
