@@ -5,6 +5,7 @@ use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\DownloadController;
 
 /**
  * Process-alive check only -- no DB query, no auth. Required by spec
@@ -24,6 +25,8 @@ Route::get('/ping', function () {
     \Illuminate\Cookie\Middleware\EncryptCookies::class,
     \Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class,
 ]);
+
+Route::get('/download', [DownloadController::class, 'show'])->name('download');
 
 Route::get('/', function (){
     return redirect()->route('login');
