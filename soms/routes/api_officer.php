@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Officer\AttendanceController;
 use App\Http\Controllers\Api\Officer\AttendanceDelegateController;
+use App\Http\Controllers\Api\Officer\AnnouncementController;
 use App\Http\Controllers\Api\Officer\CalendarController;
 use App\Http\Controllers\Api\Officer\DashboardController;
 use App\Http\Controllers\Api\Officer\EventController;
@@ -41,3 +42,9 @@ Route::delete('/attendance/sessions/{session}/delegates/{delegate}', [Attendance
 Route::get('/fines', [FineController::class, 'index']);
 Route::post('/fines/{fine}/clear', [FineController::class, 'clear']);
 Route::post('/fines/{fine}/waive', [FineController::class, 'waive']);
+
+
+Route::get('/announcements', [AnnouncementController::class, 'index']);
+Route::post('/announcements', [AnnouncementController::class, 'store']);
+Route::post('/announcements/{announcement}/publish', [AnnouncementController::class, 'publish']);
+Route::post('/announcements/{announcement}/unpublish', [AnnouncementController::class, 'unpublish']);
