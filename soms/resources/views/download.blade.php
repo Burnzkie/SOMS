@@ -1,6 +1,11 @@
 <x-guest-layout title="Download SOMS">
 
 @slot('content')
+<style>
+body { overflow-y: auto !important; align-items: flex-start !important; height: auto !important; }
+.auth-card { margin: 40px auto !important; }
+</style>
+
 <h2>Get the SOMS app</h2>
 <p class="sub">Philippine Advent College SGO — official Android app</p>
 
