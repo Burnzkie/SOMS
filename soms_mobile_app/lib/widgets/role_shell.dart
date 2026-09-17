@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_provider.dart';
 import '../screens/settings/settings_screen.dart';
+import 'update_dialog.dart';
 
 class RoleNavItem {
   const RoleNavItem({required this.label, required this.icon, required this.builder});
@@ -27,6 +29,20 @@ class RoleShell extends ConsumerStatefulWidget {
 
 class _RoleShellState extends ConsumerState<RoleShell> {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // RoleShell is the one shared widget behind all three role home
+    // screens (student/officer/admin) — hooking the update check here
+    // covers every role from a single place. Runs once per mount (i.e.
+    // once per login session), after the first frame, not from build()
+    // — so it never re-fires on rebuilds triggered elsewhere in this
+    // widget (e.g. ref.watch(authProvider) changes).
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (mounted) checkAndShowUpdateDialog(context, ref);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

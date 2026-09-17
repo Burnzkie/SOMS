@@ -9,6 +9,13 @@
          plugin's manifest merge. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- In-app auto-update (10-Mobile-Deployment.md Part B): needed to
+         trigger the package installer on the APK UpdateService downloads.
+         This is a "special" permission — declaring it here only makes it
+         requestable; the user still approves it via the OS's own
+         "Allow SOMS to install unknown apps" settings screen, which
+         UpdateService.openInstallPermissionSettings() opens. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <application
         android:label="soms_mobile"
         android:name="${applicationName}"

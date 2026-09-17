@@ -35,13 +35,68 @@ class _ScanFeedEntry {
 }
 
 class _OfficerScanScreenState extends ConsumerState<OfficerScanScreen> {
+  // autoStart: false — we call _startCamera() ourselves below so a real
+  // failure (permission denied, camera in use by another app, no camera
+  // hardware, etc.) surfaces as actual text on screen instead of
+  // mobile_scanner's default error widget, which gives no indication of
+  // *why* it failed. That default widget is almost certainly what was
+  // showing before this fix: a black frame with a plain error icon and
+  // no message.
   final MobileScannerController _controller = MobileScannerController(
     detectionSpeed: DetectionSpeed.noDuplicates,
+    autoStart: false,
   );
 
   final List<_ScanFeedEntry> _feed = [];
   bool _busy = false;
   DateTime? _lastDetectionAt;
+
+  bool _cameraReady = false;
+  String? _cameraError;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCamera();
+  }
+
+  Future<void> _startCamera() async {
+    setState(() => _cameraError = null);
+    try {
+      await _controller.start();
+      if (mounted) setState(() => _cameraReady = true);
+    } on MobileScannerException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _cameraReady = false;
+        _cameraError = _describeError(e);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _cameraReady = false;
+        _cameraError = 'Camera failed to start: $e';
+      });
+    }
+  }
+
+  /// Maps mobile_scanner's error codes to something an officer can
+  /// actually act on, rather than a raw exception string.
+  String _describeError(MobileScannerException e) {
+    switch (e.errorCode) {
+      case MobileScannerErrorCode.permissionDenied:
+        return 'Camera permission was denied. Go to Settings → Apps → '
+            'SOMS → Permissions → Camera, and allow it, then come back '
+            'and tap Retry.';
+      case MobileScannerErrorCode.unsupported:
+        return "This device's camera isn't supported for scanning.";
+      default:
+        // Includes genericError and anything not explicitly handled
+        // above — e.errorDetails often has the underlying platform
+        // message, which is worth showing verbatim while diagnosing.
+        return 'Camera error: ${e.errorDetails?.message ?? e.errorCode.name}';
+    }
+  }
 
   @override
   void dispose() {
@@ -81,17 +136,45 @@ class _OfficerScanScreenState extends ConsumerState<OfficerScanScreen> {
           _StatusBar(online: online, pending: queue.length),
           Expanded(
             flex: 3,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                MobileScanner(controller: _controller, onDetect: _onDetect),
-                if (_busy)
-                  const ColoredBox(
-                    color: Colors.black38,
-                    child: Center(child: CircularProgressIndicator()),
+            child: _cameraError != null
+                ? ColoredBox(
+                    color: Colors.black,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.videocam_off_outlined, color: Colors.white70, size: 40),
+                            const SizedBox(height: 12),
+                            Text(
+                              _cameraError!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                            const SizedBox(height: 16),
+                            FilledButton(onPressed: _startCamera, child: const Text('Retry')),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                : Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      MobileScanner(controller: _controller, onDetect: _onDetect),
+                      if (!_cameraReady)
+                        const ColoredBox(
+                          color: Colors.black,
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                      if (_busy)
+                        const ColoredBox(
+                          color: Colors.black38,
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                    ],
                   ),
-              ],
-            ),
           ),
           if (pendingForThisSession > 0)
             Padding(
