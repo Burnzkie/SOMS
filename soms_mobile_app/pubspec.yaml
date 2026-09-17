@@ -1,7 +1,7 @@
 name: soms_mobile
 description: SOMS — SGO Edition mobile app (Student Organization Management System)
 publish_to: 'none'
-version: 1.0.0+2
+version: 1.2.0+3
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -23,7 +23,14 @@ dependencies:
   qr_flutter: ^4.1.0
 
   # Officer camera-based scan fallback (USB/BT HID scanner is web-only)
-  mobile_scanner: ^5.1.1
+  # Bumped from 5.1.1 (Sep 2026) — that version's Android/CameraX
+  # integration threw a native NullPointerException
+  # ("getClass() on a null object reference") on some devices when
+  # starting the camera. This is a known category of bug in older
+  # plugin-native code, not something in our own Dart code. 7.x's
+  # errorBuilder signature changed (dropped a parameter) — scan_screen.dart
+  # is updated to match.
+  mobile_scanner: ^7.0.0
 
   # Officer calendar
   table_calendar: ^3.1.2

@@ -114,6 +114,26 @@ class _OfficerCalendarScreenState extends ConsumerState<OfficerCalendarScreen> {
                 },
                 onPageChanged: (focusedDay) => _focusedDay = focusedDay,
                 calendarStyle: const CalendarStyle(markersMaxCount: 4),
+                // Drag-to-reschedule (manage_events officers only —
+                // enforced server-side by
+                // Api\Officer\EventController::reschedule, same guard as
+                // the events list's date-picker version, so a
+                // lower-permission officer sees a rejected-drop message
+                // rather than the app trusting a client-side check).
+                //
+                // TableCalendar renders "today," "the selected day," and
+                // "an adjacent-month day" through separate builder slots
+                // from ordinary days — wiring only defaultBuilder would
+                // silently leave those specific days non-droppable, which
+                // is exactly where someone would often want to drop an
+                // event (e.g. rescheduling something onto today). All
+                // four share the one _dragTargetDayCell helper below.
+                calendarBuilders: CalendarBuilders(
+                  defaultBuilder: (context, day, focusedDay) => _dragTargetDayCell(context, day, isToday: false, isSelected: false),
+                  todayBuilder: (context, day, focusedDay) => _dragTargetDayCell(context, day, isToday: true, isSelected: false),
+                  selectedBuilder: (context, day, focusedDay) => _dragTargetDayCell(context, day, isToday: false, isSelected: true),
+                  outsideBuilder: (context, day, focusedDay) => _dragTargetDayCell(context, day, isToday: false, isSelected: false, muted: true),
+                ),
               ),
               const Divider(height: 1),
               const Padding(
@@ -133,24 +153,60 @@ class _OfficerCalendarScreenState extends ConsumerState<OfficerCalendarScreen> {
                 )
               else
                 for (final item in dayItems)
-                  ListTile(
-                    leading: Icon(Icons.circle,
-                        size: 12, color: _parseColor(item['color'] as String?)),
-                    title: Text(item['title'] as String? ?? ''),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      final id = item['id'] as String?;
-                      final eventId = id != null && id.startsWith('event-')
-                          ? int.tryParse(id.substring('event-'.length))
-                          : null;
-                      if (eventId == null) return;
-                      Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => OfficerEventDetailScreen(
-                          eventId: eventId,
-                          title: item['title'] as String? ?? '',
+                  LongPressDraggable<Map<String, dynamic>>(
+                    data: item,
+                    // Long-press, not a plain Draggable — a bare Draggable
+                    // would hijack the ListView's own vertical scroll
+                    // gesture on this list, and would fire on the same
+                    // touch as the tap-to-open-detail below. Long-press
+                    // cleanly separates "scroll/tap" from "pick this up."
+                    feedback: Material(
+                      elevation: 4,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        constraints: const BoxConstraints(maxWidth: 220),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ));
-                    },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.circle, size: 12, color: _parseColor(item['color'] as String?)),
+                            const SizedBox(width: 8),
+                            Flexible(child: Text(item['title'] as String? ?? '', overflow: TextOverflow.ellipsis)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    childWhenDragging: Opacity(
+                      opacity: 0.35,
+                      child: ListTile(
+                        leading: Icon(Icons.circle, size: 12, color: _parseColor(item['color'] as String?)),
+                        title: Text(item['title'] as String? ?? ''),
+                      ),
+                    ),
+                    child: ListTile(
+                      leading: Icon(Icons.circle,
+                          size: 12, color: _parseColor(item['color'] as String?)),
+                      title: Text(item['title'] as String? ?? ''),
+                      subtitle: const Text('Hold and drag to reschedule', style: TextStyle(fontSize: 11)),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        final id = item['id'] as String?;
+                        final eventId = id != null && id.startsWith('event-')
+                            ? int.tryParse(id.substring('event-'.length))
+                            : null;
+                        if (eventId == null) return;
+                        Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => OfficerEventDetailScreen(
+                            eventId: eventId,
+                            title: item['title'] as String? ?? '',
+                          ),
+                        ));
+                      },
+                    ),
                   ),
             ],
           ),
@@ -198,6 +254,100 @@ class _OfficerCalendarScreenState extends ConsumerState<OfficerCalendarScreen> {
 
   String _dateKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  /// One day cell, shared by all four of TableCalendar's per-state
+  /// builders (default/today/selected/outside) — see the comment above
+  /// calendarBuilders for why all four need this, not just defaultBuilder.
+  /// Visual styling here is a close approximation of table_calendar's own
+  /// built-in look (circle for today/selected, muted text for adjacent
+  /// months), not a pixel-for-pixel reproduction — reasonable since we
+  /// have to fully own each cell's rendering once any builder is
+  /// overridden at all; table_calendar has no "render your normal cell,
+  /// but also wrap it" passthrough.
+  Widget _dragTargetDayCell(
+    BuildContext context,
+    DateTime day, {
+    required bool isToday,
+    required bool isSelected,
+    bool muted = false,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return DragTarget<Map<String, dynamic>>(
+      onWillAcceptWithDetails: (details) {
+        // Reject a drop back onto the day an event is already on — avoids
+        // a pointless API call + activity log entry for a no-op move.
+        final currentStart = DateTime.tryParse(details.data['start'] as String? ?? '');
+        return currentStart == null || !isSameDay(currentStart, day);
+      },
+      onAcceptWithDetails: (details) => _rescheduleViaDrag(context, ref, details.data, day),
+      builder: (context, candidateData, rejectedData) {
+        final isDropTarget = candidateData.isNotEmpty;
+
+        BoxDecoration? decoration;
+        Color textColor = muted ? scheme.onSurface.withValues(alpha: 0.38) : scheme.onSurface;
+
+        if (isDropTarget) {
+          decoration = BoxDecoration(
+            color: scheme.primaryContainer,
+            shape: BoxShape.circle,
+            border: Border.all(color: scheme.primary, width: 2),
+          );
+          textColor = scheme.onPrimaryContainer;
+        } else if (isSelected) {
+          decoration = BoxDecoration(color: scheme.primary, shape: BoxShape.circle);
+          textColor = scheme.onPrimary;
+        } else if (isToday) {
+          decoration = BoxDecoration(shape: BoxShape.circle, border: Border.all(color: scheme.primary, width: 1.5));
+          textColor = scheme.primary;
+        }
+
+        return Container(
+          margin: const EdgeInsets.all(4),
+          alignment: Alignment.center,
+          decoration: decoration,
+          child: Text('${day.day}', style: TextStyle(color: textColor)),
+        );
+      },
+    );
+  }
+
+  /// Called when an event card (below the calendar) is dropped onto
+  /// [newDay]. Same PATCH endpoint and payload shape as the events list's
+  /// date-picker reschedule (OfficerEventsScreen._reschedule) — the
+  /// backend is the single source of truth for both permission (403 if
+  /// the officer lacks manage_events) and preserving the event's original
+  /// duration when shifting date_start.
+  Future<void> _rescheduleViaDrag(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> item,
+    DateTime newDay,
+  ) async {
+    final id = item['id'] as String?;
+    final eventId = id != null && id.startsWith('event-') ? int.tryParse(id.substring('event-'.length)) : null;
+    if (eventId == null) return;
+
+    final api = ref.read(apiClientProvider);
+    try {
+      await api.patch('/officer/events/$eventId/reschedule', data: {'date_start': _dateKey(newDay)});
+      ref.invalidate(officerCalendarProvider);
+      ref.invalidate(officerEventsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('"${item['title']}" moved to ${_dateKey(newDay)}.')),
+        );
+      }
+    } on ApiException catch (e) {
+      // Covers both the 403 (officer lacks manage_events — enforced
+      // server-side, never assumed client-side) and the 422 "already has
+      // recorded attendance" guard, same messages the date-picker path
+      // already surfaces.
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
 
   Color _parseColor(String? hex) {
     if (hex == null || !hex.startsWith('#')) return Colors.grey;

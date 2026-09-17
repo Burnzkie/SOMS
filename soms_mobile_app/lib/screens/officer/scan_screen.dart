@@ -98,6 +98,32 @@ class _OfficerScanScreenState extends ConsumerState<OfficerScanScreen> {
     }
   }
 
+  /// Shared error UI for both failure paths: the initial controller.start()
+  /// try/catch, and MobileScanner's own errorBuilder for failures that
+  /// happen after a successful start. Same look either way, so an officer
+  /// can't tell which internal path caught it — they just see what's wrong
+  /// and a way to retry.
+  Widget _buildCameraError(String message, {required VoidCallback onRetry}) {
+    return ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.videocam_off_outlined, color: Colors.white70, size: 40),
+              const SizedBox(height: 12),
+              Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: onRetry, child: const Text('Retry')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -137,32 +163,25 @@ class _OfficerScanScreenState extends ConsumerState<OfficerScanScreen> {
           Expanded(
             flex: 3,
             child: _cameraError != null
-                ? ColoredBox(
-                    color: Colors.black,
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.videocam_off_outlined, color: Colors.white70, size: 40),
-                            const SizedBox(height: 12),
-                            Text(
-                              _cameraError!,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.white70),
-                            ),
-                            const SizedBox(height: 16),
-                            FilledButton(onPressed: _startCamera, child: const Text('Retry')),
-                          ],
-                        ),
-                      ),
-                    ),
-                  )
+                ? _buildCameraError(_cameraError!, onRetry: _startCamera)
                 : Stack(
                     fit: StackFit.expand,
                     children: [
-                      MobileScanner(controller: _controller, onDetect: _onDetect),
+                      MobileScanner(
+                        controller: _controller,
+                        onDetect: _onDetect,
+                        // Without this, a failure that happens *after*
+                        // the initial controller.start() succeeds (camera
+                        // taken by another app, a native hiccup mid-
+                        // session, etc.) falls through to mobile_scanner's
+                        // own built-in error widget — a bare icon with no
+                        // text — bypassing our error UI entirely. This is
+                        // almost certainly what was still happening: the
+                        // try/catch around start() only covers the first
+                        // failure mode, not this one.
+                        errorBuilder: (context, error) =>
+                            _buildCameraError(_describeError(error), onRetry: _startCamera),
+                      ),
                       if (!_cameraReady)
                         const ColoredBox(
                           color: Colors.black,
