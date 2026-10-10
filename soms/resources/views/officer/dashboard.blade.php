@@ -1,3 +1,4 @@
+
 <x-layout title="Officer Dashboard">
 
 @slot('nav')
@@ -24,8 +25,8 @@
 @slot('content')
 <div class="topbar">
   <div>
-    <h1>Good {{ now()->hour < 12 ? 'morning' : (now()->hour < 18 ? 'afternoon' : 'evening') }}, {{ explode(' ', auth()->user()->name)[0] }} 👋</h1>
-    <p class="meta">Here's what's happening in your organization today.</p>
+    <h1>Dashboard</h1>
+    <p class="meta">Welcome back, {{ explode(' ', auth()->user()->name)[0] }}! Here's what's happening in your organization today.</p>
     @if($position)
       <div class="tier-badge">{{ $position->position_title }}</div>
     @endif
@@ -118,7 +119,7 @@
 </div>
 
 <div class="panel">
-  <div class="panel-head"><h3>Quick Access</h3></div>
+  <div class="panel-head"><h3>Quick Actions</h3></div>
   <div class="qa-grid">
     @if($permissions['manage_events'] || $permissions['manage_attendance'])
     <a href="{{ route('officer.events.index') }}" class="qa-card">

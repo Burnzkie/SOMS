@@ -19,7 +19,7 @@
 	# number must move in lockstep with render.yaml if the worker service
 	# is ever scaled beyond a single instance.
 	frankenphp {
-		num_threads 4
+		num_threads 3
 	}
 }
 
@@ -42,5 +42,20 @@
 	# bare Caddy 404 instead of ever reaching Laravel's own router --
 	# Laravel's exception handler already returns proper 404s for routes
 	# that genuinely don't exist.
+
+	# CDN substitute (Sep 2026): no CDN in front of this yet -- that needs
+	# a custom domain (Cloudflare et al. work by taking over your domain's
+	# nameservers, which isn't possible against a bare onrender.com URL).
+	# This is the practical substitute available without one: Vite's
+	# build output in public/build/ is content-hashed (the filename
+	# itself changes when the content does -- see public/build/manifest.json
+	# after `npm run build`), so it's safe to tell browsers to cache it
+	# forever. A new deploy ships new filenames automatically; nothing
+	# ever serves stale JS/CSS from a browser cache because of this.
+	@immutable {
+		path /build/*
+	}
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+
 	php_server
 }

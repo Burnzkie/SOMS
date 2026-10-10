@@ -7,8 +7,8 @@
 @slot('content')
 <div class="topbar">
   <div>
-    <h1>Good {{ now()->hour < 12 ? 'morning' : (now()->hour < 18 ? 'afternoon' : 'evening') }}, {{ explode(' ', auth()->user()->name)[0] }} 👋</h1>
-    <p class="meta">Here's what's happening in your organization today.</p>
+    <h1>Dashboard</h1>
+    <p class="meta">Welcome back, {{ explode(' ', auth()->user()->name)[0] }}! Stay involved and make a difference.</p>
   </div>
   <p class="meta">{{ now()->format('F j, Y') }}<br>{{ now()->format('l') }}</p>
 </div>
@@ -83,7 +83,7 @@
 </div>
 
 <div class="panel">
-  <div class="panel-head"><h3>Quick Access</h3></div>
+  <div class="panel-head"><h3>Quick Actions</h3></div>
   <div class="qa-grid">
     <a href="{{ route('student.events.index') }}" class="qa-card">
       <div class="qa-icon" style="background:var(--primary-soft); color:var(--primary);">📅</div>

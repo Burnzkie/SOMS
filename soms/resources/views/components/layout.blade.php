@@ -23,8 +23,8 @@
      up the right value automatically depending on whether it's inside
      the sidebar or the main content area, with zero per-component
      changes needed). */
-  --primary:#2563EB; --violet:#4F7DF3;
-  --primary-soft:rgba(37,99,235,.12);
+  --primary:#1D4ED8; --violet:#3B82F6;
+  --primary-soft:rgba(29,78,216,.10);
   --purple:#8B5CF6; --purple-soft:rgba(139,92,246,.12);
   --emerald:#10B981; --emerald-soft:rgba(16,185,129,.12);
   --amber:#F59E0B; --amber-soft:rgba(245,158,11,.12);
@@ -33,11 +33,13 @@
      for the contrast-ratio rationale. Same fix, duplicated here since this
      file re-declares the same palette rather than sharing it. */
   --emerald-text:#0B7C56; --amber-text:#996206; --rose-text:#D00C2E;
-  --bg:#F4F6FB; --bg-elevated:#0B1330; --surface:#FFFFFF; --surface-2:#F1F4FA;
-  --border:rgba(15,23,42,.08); --border-strong:rgba(15,23,42,.14);
+  --bg:#EEF2F9; --bg-elevated:#0B1F4B; --surface:#FFFFFF; --surface-2:#F5F7FC;
+  --border:rgba(15,23,42,.07); --border-strong:rgba(15,23,42,.13);
   --text:#0F172A; --text-muted:#64748B; --text-faint:#94A3B8;
-  --shadow-sm: 0 1px 2px rgba(15,23,42,.05), 0 1px 1px rgba(15,23,42,.04);
+  --shadow-sm: 0 1px 3px rgba(15,23,42,.06);
   --shadow-md: 0 12px 28px -10px rgba(15,23,42,.16);
+  --shadow-lg: 0 20px 40px -12px rgba(15,23,42,.25); /* was undefined; used by .notif-dropdown */
+  --nav-active:#1F5FE0; /* solid blue for the active nav item */
 }
 *{box-sizing:border-box;}
 html{
@@ -109,12 +111,12 @@ table{ max-width: 100%;}
 .sidebar-overlay.visible { display:block; opacity:1;}
 
 .sidebar{
-  width:248px;
-  background: var(--bg-elevated);
-  border-right:1px solid var(--border);
+  width:236px;
+  background: linear-gradient(180deg,#0E2657 0%,#0B1F4B 55%,#081840 100%);
+  border-right:none;
   display:flex;
   flex-direction: column;
-  padding:22px 16px; 
+  padding:20px 14px;
   flex-shrink: 0;
   /* Sidebar chrome stays dark navy even though the rest of the app is now
      light — re-scoping these variable names locally (rather than adding
@@ -138,15 +140,17 @@ table{ max-width: 100%;}
 .sidebar-brand .mark{
   width:34px;
   height:34px;
-  border-radius: 9px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  border-radius:50%;
+  background:transparent;
+  border:2px solid rgba(255,255,255,.85);
+  padding:3px;
   flex-shrink:0;
-  object-fit: cover;
+  object-fit:contain;
   display:block;
 }
 .sidebar-brand b{
-  font-size: 15px;
+  font-size: 17px;
+  letter-spacing:.06em;
   font-family:var(--font-display);
   /* Fix (Sep 2026) — same bug as .who-row .who b: no color declared, so
      this inherited the page's dark-navy computed color instead of the
@@ -175,9 +179,9 @@ table{ max-width: 100%;}
   display:flex;
   align-items: center;
   gap: 10px;
-  padding:9px 12px;
-  border-radius: var(--radius-sm);
-  font-size: 13.5px;
+  padding:10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-muted);
   margin-bottom:2px;
@@ -204,13 +208,22 @@ table{ max-width: 100%;}
   background:var(--surface-2);
   color: var(--text);
 }
+.nav-link .ic,
+.nav-link .ic.orange, .nav-link .ic.purple, .nav-link .ic.green,
+.nav-link .ic.amber, .nav-link .ic.rose{
+  /* Mockup: uniform borderless icons instead of per-icon tinted squares */
+  background:transparent;
+  filter:grayscale(1) brightness(1.8);
+}
 .nav-link.active{
-  background:var(--primary-soft);
-  color: var(--primary);
+  background:var(--nav-active);
+  color:#fff;
   font-weight:600;
+  box-shadow:0 6px 14px rgba(31,95,224,.35);
 }
 .nav-link.active .ic{
-  background: var(--primary);
+  background:transparent;
+  filter:grayscale(1) brightness(3);
 }
 .nav-link .badge-count{
   margin-left: auto;
@@ -226,13 +239,14 @@ table{ max-width: 100%;}
   display:flex;
   align-items:center;
   gap:10px;
-  padding:10px 12px;
-  border-radius: var(--radius-md);
-  background: var(--surface-2);
+  padding:0 8px;
+  background:transparent;
   margin-bottom: 8px;
 }
 .who-row-top{
-margin:4px 0 18px;
+  margin:4px 0 16px;
+  padding-bottom:16px;
+  border-bottom:1px solid var(--border);
 }
 .avatar{
   width: 34px;
@@ -322,18 +336,20 @@ margin:4px 0 18px;
 .logout-btn{
   width:100%;
   height:38px;
-  border-radius: var(--radius-sm);
-  border:1px solid var(--border);
-  background: var(--surface);
+  padding:0 12px;
+  text-align:left;
+  border:none;
+  background:transparent;
   color:var(--text-muted);
   font-family:var(--font-ui);
   font-weight:600;
-  font-size: 12.5px;
+  font-size:13px;
   cursor:pointer;
+  border-radius:8px;
 }
 .logout-btn:hover{
-  color:var(--rose-text);
-  border-color:var(--rose);
+  color:#fff;
+  background:var(--surface-2);
 }
 .btn{
   display:inline-flex;
@@ -355,7 +371,7 @@ margin:4px 0 18px;
 .btn-primary{
   background: linear-gradient(135deg, var(--primary), var(--violet));
   color:#fff;
-  box-shadow: 0 6px 18px rgba(91,91,246,.3);
+  box-shadow: 0 6px 16px rgba(29,78,216,.28);
 }
 .btn-ghost{
   background: var(--surface-2);
@@ -427,15 +443,17 @@ margin:4px 0 18px;
 }
 .data-table th{
   text-align:left;
-  padding:10px 8px;
+  padding:10px 12px;
+  background:var(--surface-2);
   border-bottom:1px solid var(--border);
   color:var(--text-muted);
   font-weight:600;
-  font-size:12px;
+  font-size:11.5px;
   white-space:nowrap;
 }
 .data-table td{
-  padding:12px 8px;
+  padding:12px;
+  font-size:12.5px;
   border-bottom:1px solid var(--border);
   vertical-align:middle;
 }
@@ -474,7 +492,7 @@ margin:4px 0 18px;
   font-size:11px;
   font-weight:700;
   padding:3px 9px;
-  border-radius:99px;
+  border-radius:6px;
   white-space:nowrap;
 }
 .badge.approved{ background: var(--emerald-soft); color: var(--emerald-text);}
@@ -484,6 +502,9 @@ margin:4px 0 18px;
 .badge.unpaid{ background: var(--rose-soft); color: var(--rose-text);}
 .badge.flagged{ background: var(--rose-soft); color: var(--rose-text);}
 .badge.rejected{ background: var(--rose-soft); color: var(--rose-text);}
+.badge.upcoming, .badge.ongoing{ background: var(--primary-soft); color: var(--primary);}
+.badge.present{ background: var(--emerald-soft); color: var(--emerald-text);}
+.badge.absent{ background: var(--rose-soft); color: var(--rose-text);}
 
 .main{
   flex:1;
@@ -508,7 +529,7 @@ margin:4px 0 18px;
   height:40px;
   border-radius:10px;
   border:1px solid var(--border);
-  background:var(--surface-2);
+  background:var(--surface);
   color:var(--text);
   padding:0 14px 0 38px;
   font-size:13px;
@@ -534,7 +555,8 @@ margin:4px 0 18px;
   height:40px;
   border-radius:10px;
   border:1px solid var(--border);
-  background:var(--surface-2);
+  background:var(--surface);
+  box-shadow:var(--shadow-sm);
   display:flex;
   align-items:center;
   justify-content:center;
@@ -619,7 +641,7 @@ margin:4px 0 18px;
   display:flex;
   align-items:center;
   justify-content:center;
-  background:var(--surface-2);
+  background:var(--surface);
   color:var(--text-muted);
   font-weight:700;
   font-size:14px;
@@ -637,7 +659,7 @@ margin:4px 0 18px;
   flex-wrap:wrap;
   margin-bottom:28px;
 }
-.topbar h1{ font-size:22px;}
+.topbar h1{ font-size:24px; font-weight:700;}
 .topbar .meta{
   font-size:13px;
   color:var(--text-muted);
@@ -694,7 +716,7 @@ margin:4px 0 18px;
 .stat-card{
   background: var(--surface);
   border:1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: 14px;
   padding:18px 20px;
   box-shadow: var(--shadow-sm);
   min-width:0;
@@ -741,6 +763,14 @@ margin:4px 0 18px;
   font-family:var(--font-display);
   word-break: break-word;
 }
+.stat-card{ position:relative; display:flex; flex-direction:column; }
+.stat-card .stat-icon{ position:absolute; top:14px; right:14px; width:30px; height:30px; font-size:14px; }
+.stat-card .label{ order:-1; padding-right:36px; font-weight:600; }
+.stat-card .value{ margin:6px 0 2px; }
+.topbar > .meta{ text-align:right; }
+/* green/red trend line under a stat value, e.g. <div class="trend">▲ +5%</div> */
+.trend{ font-size:11.5px; font-weight:600; color:var(--emerald-text); margin-top:6px; }
+.trend.down{ color:var(--rose-text); }
 .stat-card .label{
   font-size:12.5px;
   color:var(--text-muted);
@@ -798,7 +828,7 @@ margin:4px 0 18px;
      TOP of the bottom-aligned content block, under only ~15-55% darkening
      — not enough against a bright sky/mountain photo, which is exactly
      what broke in the reported screenshot. */
-  background:linear-gradient(0deg, rgba(10,11,16,.95) 15%, rgba(10,11,16,.78) 60%, rgba(10,11,16,.35) 100%);
+  background:linear-gradient(120deg, rgba(19,60,180,.96) 20%, rgba(37,99,235,.82) 100%);
 }
 .feature-card .feature-content{
   position:relative;
@@ -877,11 +907,14 @@ margin:4px 0 18px;
 }
 .qa-card{
   display:flex;
-  align-items:flex-start;
-  gap:12px;
-  padding:16px;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  gap:10px;
+  padding:18px 12px;
   border-radius: var(--radius-md);
-  background: var(--surface-2);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
   border:1px solid var(--border);
   cursor:pointer;
   transition: border-color .15s var(--ease), transform .15s var(--ease);
@@ -906,7 +939,9 @@ margin:4px 0 18px;
   font-size:13.5px;
   margin-bottom:2px;
 }
-.qa-card .qa-text span{
+.qa-card .qa-text{ text-align:center; }
+.qa-card .qa-text span{ display:none; }
+.qa-card .qa-text span.keep-sub{
   font-size:11.5px;
   color:var(--text-muted);
 }
@@ -934,7 +969,7 @@ margin:4px 0 18px;
 .panel{
   background: var(--surface);
   border:1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: 14px;
   padding:22px;
   box-shadow: var(--shadow-sm);
   margin-bottom: 20px;

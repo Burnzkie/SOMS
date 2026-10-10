@@ -1,3 +1,4 @@
+{{-- resources/views/officer/events/show.blade.php --}}
 <x-layout :title="$event->title">
 
 @slot('nav')
@@ -8,7 +9,7 @@
 <div class="topbar">
   <div>
     <h1>{{ $event->title }}</h1>
-    <p class="meta">{{ $event->date_start->format('M j') }} – {{ $event->date_end->format('M j, Y') }} &middot; {{ $event->venue ?: 'No venue set' }}</p>
+    <p class="meta">{{ $event->date_start->format('M j') }} – {{ $event->date_end->format('M j, Y') }} &middot; {{ $event->venue ?: 'No venue set' }} &middot; {{ $event->target_programs ? implode(', ', $event->target_programs) : 'All programs' }}</p>
   </div>
   <div>
     <span class="badge {{ $event->is_published ? 'approved' : 'pending' }}">{{ $event->is_published ? 'Published' : 'Draft' }}</span>
@@ -26,6 +27,11 @@
 @endif
 @if(session('error'))
 <div class="banner" style="background:var(--rose-soft); color:var(--rose);">{{ session('error') }}</div>
+@endif
+@if($errors->any())
+<div class="banner" style="background:var(--rose-soft); color:var(--rose);">
+  @foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach
+</div>
 @endif
 
 <div class="panel">
@@ -70,6 +76,13 @@
         <input type="text" name="venue" value="{{ old('venue', $event->venue) }}" class="field-input" style="width:100%;">
       </div>
     </div>
+    @if(empty($customSessions))
+    @include('partials.event-time-fields', ['timeWindow' => $timeWindow])
+    @include('partials.parade-date-picker', ['fixedDates' => $eventDates, 'selected' => $paradeDates])
+    @else
+    @include('partials.custom-sessions-edit', ['customSessions' => $customSessions])
+    @endif
+    @include('partials.program-picker', ['selected' => $event->target_programs ?? []])
     <div class="field" style="margin-bottom:14px;">
       <label style="font-size:11px; color:var(--text-muted);">Description</label>
       <textarea name="description" class="field-input" style="width:100%; min-height:56px;">{{ old('description', $event->description) }}</textarea>
@@ -104,7 +117,7 @@
 
 @foreach($event->eventDays as $day)
 <div class="panel">
-  <div class="panel-head"><h3>{{ $day->date->format('l, M j, Y') }}</h3></div>
+  <div class="panel-head"><h3>{{ $day->date->format('l, M j, Y') }} @if($day->sessions->contains(fn ($s) => $s->is_parade))<span class="badge approved" style="margin-left:8px;">Parade day</span>@endif</h3></div>
   <div class="table-responsive">
     <table class="data-table">
       <thead>
@@ -119,7 +132,7 @@
       <tbody>
         @foreach($day->sessions as $session)
         <tr>
-          <td>{{ ucfirst($session->session_type) }}</td>
+          <td>{{ $session->label }}@if($session->is_parade) <span class="badge approved">Parade</span>@endif</td>
           <td>{{ $session->timein_start->format('g:i A') }} – {{ $session->timein_end->format('g:i A') }}</td>
           <td>{{ $session->timeout_start ? $session->timeout_start->format('g:i A') . ' – ' . $session->timeout_end->format('g:i A') : '—' }}</td>
           <td><span class="badge {{ $session->fines_issued ? 'approved' : 'pending' }}">{{ $session->fines_issued ? 'Yes' : 'No' }}</span></td>
@@ -135,7 +148,7 @@
           <td colspan="5" style="padding:4px 8px 16px;">
             <div style="background:var(--surface-2); border-radius:var(--radius-md); padding:12px 14px;">
               <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;">
-                Delegates — {{ ucfirst($session->session_type) }}
+                Delegates — {{ $session->label }}
               </div>
               @forelse($session->delegates as $delegate)
                 <div class="queue-item" style="margin-bottom:6px;">

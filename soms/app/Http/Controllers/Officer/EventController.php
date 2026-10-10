@@ -1,4 +1,5 @@
 <?php
+// app/Http/Controllers/Officer/EventController.php
 
 namespace App\Http\Controllers\Officer;
 
@@ -14,6 +15,7 @@ use App\Services\SafeImageUpload;
 use App\Support\EventTypes;
 use App\Support\OfficerPermission;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -24,6 +26,10 @@ use Illuminate\Support\Facades\Storage;
  * Officers may edit individual session times and per-violation fine amounts
  * afterward. This is the prerequisite scaffolding the Attendance module
  * (AttendanceController) scans against.
+ *
+ * Schedule (Morning/Afternoon time windows + parade dates) is validated by
+ * EventSetupService::scheduleRules() and applied by the service, so the web
+ * and mobile controllers share one implementation.
  */
 class EventController extends Controller
 {
@@ -66,7 +72,8 @@ class EventController extends Controller
      * Also the target of the calendar's quick-create modal (dateClick on
      * an empty day) — the modal computes date_end from a "days" stepper
      * client-side and posts the same title/description/venue/type/
-     * date_start/date_end/has_parade shape as the full create form.
+     * date_start/date_end shape as the full create form, with parade_mode
+     * (none/first/last/all) instead of the per-date parade checkboxes.
      */
     public function store(Request $request)
     {
@@ -79,10 +86,9 @@ class EventController extends Controller
             'type'        => 'required|' . EventTypes::validationRule(),
             'date_start'  => 'required|date',
             'date_end'    => 'required|date|after_or_equal:date_start',
-            'has_parade'  => 'nullable|boolean',
             'image'       => 'nullable|file|image|mimes:jpeg,png,webp|max:2048',
             'color'       => 'nullable|regex:/^#[0-9A-Fa-f]{6}$/',
-        ]);
+        ] + EventSetupService::scheduleRules());
 
         if ($request->hasFile('image')) {
             $data['image_path'] = SafeImageUpload::store($request->file('image'), 'r2', 'events');
@@ -114,6 +120,10 @@ class EventController extends Controller
         return view('officer.events.show', [
             'event' => $event,
             'eventTypes' => EventTypes::forSelect(),
+            'timeWindow' => EventSetupService::currentTimeWindow($event),
+            'paradeDates' => EventSetupService::currentParadeDates($event),
+            'customSessions' => EventSetupService::currentCustomSessions($event),
+            'eventDates' => $event->eventDays->sortBy('date')->map(fn ($day) => $day->date->toDateString())->values()->all(),
         ]);
     }
 
@@ -228,9 +238,14 @@ class EventController extends Controller
     }
 
     /**
-     * Edit the event's own details (title/description/venue/type) — not
-     * its dates, which move via reschedule() above and would otherwise
-     * need to re-derive EventDays/sessions here too.
+     * Edit the event's own details (title/description/venue/type), its
+     * Morning/Afternoon time windows and its parade dates — not its date
+     * range, which moves via reschedule() above.
+     *
+     * The schedule is only re-applied to sessions when it actually differs
+     * from what the form was prefilled with (see EventSetupService::
+     * updateSchedule), so a plain "Save details" never overwrites
+     * per-session edits. Blocked once attendance exists.
      */
     public function update(Request $request, Event $event)
     {
@@ -244,7 +259,17 @@ class EventController extends Controller
             'type'        => 'required|' . EventTypes::validationRule(),
             'image'       => 'nullable|file|image|mimes:jpeg,png,webp|max:2048',
             'color'       => 'nullable|regex:/^#[0-9A-Fa-f]{6}$/',
-        ]);
+        ] + EventSetupService::scheduleRules());
+
+        // Schedule is applied to the generated sessions, not stored on the event
+        // row — checked first so nothing is saved if it's blocked.
+        $schedule = Arr::only($data, EventSetupService::SCHEDULE_KEYS);
+        $data = Arr::except($data, EventSetupService::SCHEDULE_KEYS);
+
+        $scheduleError = EventSetupService::updateSchedule($event, $schedule);
+        if ($scheduleError) {
+            return back()->withInput()->with('error', $scheduleError);
+        }
 
         if ($request->hasFile('image')) {
             $oldPath = $event->image_path;
@@ -257,7 +282,7 @@ class EventController extends Controller
 
         $event->update($data);
 
-        ActivityLog::record(auth()->id(), 'event_updated', Event::class, $event->id, $data);
+        ActivityLog::record(auth()->id(), 'event_updated', Event::class, $event->id, $data + ['schedule' => array_filter($schedule, fn ($v) => $v !== null)]);
 
         return back()->with('status', 'Event details updated.');
     }

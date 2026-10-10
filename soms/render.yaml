@@ -55,6 +55,12 @@ envVarGroups:
         sync: false
       - key: SANCTUM_STATEFUL_DOMAINS
         sync: false
+      # Error tracking (Sep 2026) -- set the real DSN by hand in the
+      # Render dashboard after signing up at sentry.io (see CHANGES.md).
+      # sync: false because a DSN is a write-capable secret, same
+      # treatment as the DB/R2 credentials above -- never committed here.
+      - key: SENTRY_LARAVEL_DSN
+        sync: false
       # Deploy-readiness fix (Sep 2026): these three were previously
       # undeclared here, meaning if never set by hand in the Render
       # dashboard they'd silently fall back to config/*.php defaults.

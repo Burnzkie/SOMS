@@ -1,4 +1,5 @@
 <?php
+// app/Http/Controllers/Api/Officer/EventController.php
 
 namespace App\Http\Controllers\Api\Officer;
 
@@ -11,6 +12,7 @@ use App\Services\SafeImageUpload;
 use App\Support\EventTypes;
 use App\Support\OfficerPermission;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -57,10 +59,10 @@ class EventController extends Controller
             'type'        => 'required|' . EventTypes::validationRule(),
             'date_start'  => 'required|date',
             'date_end'    => 'required|date|after_or_equal:date_start',
-            'has_parade'  => 'nullable|boolean',
+            'has_parade'  => 'nullable|boolean', // legacy: true = parade on the first day
             'image'       => 'nullable|file|image|mimes:jpeg,png,webp|max:2048',
             'color'       => 'nullable|regex:/^#[0-9A-Fa-f]{6}$/',
-        ]);
+        ] + EventSetupService::scheduleRules());
 
         if ($request->hasFile('image')) {
             $data['image_path'] = SafeImageUpload::store($request->file('image'), 'r2', 'events');
@@ -93,7 +95,17 @@ class EventController extends Controller
             'type'        => 'required|' . EventTypes::validationRule(),
             'image'       => 'nullable|file|image|mimes:jpeg,png,webp|max:2048',
             'color'       => 'nullable|regex:/^#[0-9A-Fa-f]{6}$/',
-        ]);
+        ] + EventSetupService::scheduleRules());
+
+        // Optional schedule edits (time windows / parade dates). Clients that
+        // don't send them are unaffected. Checked before anything is saved.
+        $schedule = Arr::only($data, EventSetupService::SCHEDULE_KEYS);
+        $data = Arr::except($data, EventSetupService::SCHEDULE_KEYS);
+
+        $scheduleError = EventSetupService::updateSchedule($event, $schedule);
+        if ($scheduleError) {
+            return response()->json(['success' => false, 'message' => $scheduleError], 422);
+        }
 
         if ($request->hasFile('image')) {
             $oldPath = $event->image_path;

@@ -1,4 +1,5 @@
 <?php
+// app/Jobs/IssueSessionFinesJob.php
 
 namespace App\Jobs;
 
@@ -7,7 +8,7 @@ use App\Models\EventAttendance;
 use App\Models\EventFineRule;
 use App\Models\EventSession;
 use App\Models\Fine;
-use App\Models\OrganizationMember;
+use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -58,7 +59,14 @@ class IssueSessionFinesJob implements ShouldQueue
                 $event = $session->eventDay->event;
                 $now = now();
 
-                $members = OrganizationMember::where('organization_id', $event->organization_id)->get();
+                // Draft events haven't been announced to students, so nobody can be fined yet.
+                if (!$event->is_published) {
+                    return;
+                }
+
+                // Every approved student the event applies to (events can target specific programs).
+                $students = User::students()->approved()->get()
+                    ->filter(fn (User $student) => $event->appliesTo($student));
 
                 $timeInDue = $this->force || $now->greaterThanOrEqualTo($session->timein_end);
                 if ($timeInDue) {
@@ -70,18 +78,24 @@ class IssueSessionFinesJob implements ShouldQueue
                     // lookup ('missed_parade_timein') never matched any
                     // EventFineRule row and the method returned early without
                     // ever issuing a fine.
-                    $timeInSuffix = $session->session_type === 'parade'
+                    //
+                    // A Morning session flagged is_parade is the parade check-in:
+                    // its missed time-in uses the 'missed_parade' rule (higher
+                    // amount). Its time-out (if any) still uses the regular rule.
+                    $isParadeCheckIn = $session->session_type === 'parade' || $session->is_parade;
+                    $timeInSuffix = $isParadeCheckIn
                         ? 'parade'
                         : $session->session_type . '_timein';
-                    $this->issueForScanType($session, $event, $members, 'time_in', $timeInSuffix);
+                    $this->issueForScanType($session, $event, $students, 'time_in', $timeInSuffix);
                 }
 
-                $hasTimeoutRule = $session->session_type !== 'parade';
+                // Time-out is optional per session: no timeout window set = no time-out fine.
+                $hasTimeoutRule = $session->session_type !== 'parade' && $session->timeout_end !== null;
                 $timeOutDue = $hasTimeoutRule && ($this->force || (
                     $session->timeout_end && $now->greaterThanOrEqualTo($session->timeout_end)
                 ));
                 if ($timeOutDue) {
-                    $this->issueForScanType($session, $event, $members, 'time_out', $session->session_type . '_timeout');
+                    $this->issueForScanType($session, $event, $students, 'time_out', $session->session_type . '_timeout');
                 }
 
                 $fullyAssessed = $this->force || !$hasTimeoutRule || $timeOutDue;
@@ -94,7 +108,7 @@ class IssueSessionFinesJob implements ShouldQueue
         ActivityLog::record(null, 'fine_issuance_job_ran', EventSession::class, $this->sessionId);
     }
 
-    protected function issueForScanType($session, $event, $members, string $scanType, string $violationSuffix): void
+    protected function issueForScanType($session, $event, $students, string $scanType, string $violationSuffix): void
     {
         $violationType = 'missed_' . $violationSuffix;
 
@@ -102,14 +116,15 @@ class IssueSessionFinesJob implements ShouldQueue
             ->where('violation_type', $violationType)
             ->first();
 
-        if (!$fineRule) {
+        // No rule, or an unset (₱0) amount, means this violation isn't fined.
+        if (!$fineRule || (float) $fineRule->amount <= 0) {
             return;
         }
 
-        foreach ($members as $member) {
+        foreach ($students as $student) {
             $marked = EventAttendance::where([
                 'event_session_id' => $session->id,
-                'user_id'          => $member->user_id,
+                'user_id'          => $student->id,
                 'scan_type'        => $scanType,
             ])->where('status', 'present')->exists();
 
@@ -119,14 +134,16 @@ class IssueSessionFinesJob implements ShouldQueue
 
             $fine = Fine::firstOrCreate(
                 [
-                    'user_id'           => $member->user_id,
+                    'user_id'           => $student->id,
                     'event_session_id'  => $session->id,
                     'violation_type'    => $violationType,
                 ],
                 [
                     'event_id'     => $event->id,
                     'event_day_id' => $session->event_day_id,
-                    'reason'       => 'Missed ' . str_replace('_', ' ', $violationSuffix),
+                    'reason'       => $session->session_type === 'custom'
+                        ? 'Missed ' . $session->label . ($scanType === 'time_out' ? ' time-out' : ' time-in')
+                        : 'Missed ' . str_replace('_', ' ', $violationSuffix),
                     'amount'       => $fineRule->amount,
                     'issued_at'    => now(),
                     'status'       => 'unpaid',
@@ -138,7 +155,7 @@ class IssueSessionFinesJob implements ShouldQueue
             // and firstOrCreate's idempotency means a re-run must not
             // re-notify the student for a fine that already existed.
             if ($fine->wasRecentlyCreated) {
-                NotificationService::send($member->user_id, 'fine_issued', [
+                NotificationService::send($student->id, 'fine_issued', [
                     'fine_id'        => $fine->id,
                     'violation_type' => $violationType,
                     'amount'         => (float) $fine->amount,

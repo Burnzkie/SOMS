@@ -2,11 +2,12 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
+     use RefreshDatabase;
     /**
      * SOMS has no public homepage -- '/' always redirects to /login.
      * See routes/web.php. This replaces Laravel's default boilerplate

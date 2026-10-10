@@ -1,3 +1,4 @@
+{{-- resources/views/officer/calendar/index.blade.php --}}
 <x-layout title="Calendar">
 
 @slot('nav')
@@ -42,6 +43,11 @@
 @if(session('status'))
 <div class="banner" style="background:var(--emerald-soft); color:var(--emerald);">{{ session('status') }}</div>
 @endif
+@if($errors->any())
+<div class="banner" style="background:var(--rose-soft); color:var(--rose);">
+  @foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach
+</div>
+@endif
 
 <div class="legend">
   <span><span class="dot" style="background:#FF7A29;"></span>SOMS Events</span>
@@ -52,7 +58,8 @@
 @if($canManageEvents)
 <!-- Quick-create: opened by clicking an empty date on the calendar. Posts
      the same shape as the full /officer/events/create form (title,
-     description, venue, type, date_start, date_end, has_parade) — "days"
+     description, venue, type, date_start, date_end, parade_mode, plus the
+     Morning/Afternoon time windows) — "days"
      is a UI-only stepper here, computed into date_end before submit. -->
 <div class="qc-backdrop" id="qc-backdrop">
   <div class="qc-modal">
@@ -121,15 +128,22 @@
       </div>
       <p class="qc-end-preview" id="qc-end-preview"></p>
 
+      @include('partials.attendance-setup', ['timeWindow' => []])
+      @include('partials.program-picker', ['selected' => []])
+
       <div class="qc-field">
         <label>Description <span style="font-weight:400; color:var(--text-muted);">(optional)</span></label>
         <textarea name="description" class="field-input" style="width:100%; min-height:56px;"></textarea>
       </div>
 
-      <div class="qc-field">
-        <label style="display:flex; align-items:center; gap:8px; font-weight:500;">
-          <input type="checkbox" name="has_parade" value="1"> Include a Parade session (time-in only) on each day
-        </label>
+      <div class="qc-field" data-setup="full_day">
+        <label>Parade day <span style="font-weight:400; color:var(--text-muted);">(optional — Morning time-in becomes the parade check-in)</span></label>
+        <select name="parade_mode" id="qc-parade-mode" class="field-input" style="width:100%;">
+          <option value="none">No parade</option>
+          <option value="first">First day</option>
+          <option value="last">Last day</option>
+          <option value="all">Every day</option>
+        </select>
       </div>
 
       <div class="qc-actions">

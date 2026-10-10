@@ -1,4 +1,5 @@
 <?php
+// app/Http/Controllers/Student/QrController.php
 
 namespace App\Http\Controllers\Student;
 

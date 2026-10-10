@@ -94,7 +94,7 @@ class FineIssuanceAndAttendanceTest extends TestCase
 
     protected function enrollMember(EventSession $session): User
     {
-        $member = User::factory()->create();
+        $member = User::factory()->create(['is_approved' => true]);
         OrganizationMember::create([
             'organization_id' => $this->org->id,
             'user_id' => $member->id,

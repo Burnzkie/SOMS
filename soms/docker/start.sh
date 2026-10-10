@@ -1,4 +1,5 @@
 #!/bin/sh
+# start.sh
 set -e
 
 php artisan config:cache
@@ -23,31 +24,44 @@ if [ "${SEED_ADMIN:-false}" = "true" ]; then
     php artisan db:seed --class=AdminSeeder --force
 fi
 
-# Roadmap Phase 2.2 -- previously nothing consumed the `jobs` table, so
-# queued work (IssueSessionFinesJob) never ran. This starts a queue worker
-# as a background process inside the same container.
+# Queue worker (consumes the `jobs` table, e.g. IssueSessionFinesJob).
 #
-# This is a pragmatic single-container compromise, not the ideal setup --
-# the textbook-correct version is a *separate* Render worker service running
-# `php artisan queue:work` on its own, so a crashed/restarted web process
-# doesn't also kill the worker (and vice versa). If SOMS ever needs that
-# reliability guarantee, split it out; render.yaml (added alongside this
-# file) sketches that two-service layout as an alternative.
+# Runs inside a restart loop: --max-time=3600 makes the worker exit after an
+# hour (to recycle memory), and without the loop nothing would bring it
+# back -- jobs would pile up silently and fines would stop being issued.
+# The loop also restarts the worker if it ever crashes.
 #
-# --tries=3 + --backoff so a transient DB hiccup doesn't permanently fail a
-# job; --max-time bounds each worker's lifetime so it recycles periodically
-# rather than running forever with an ever-growing memory footprint.
-php artisan queue:work \
-    --tries=3 \
-    --backoff=5 \
-    --max-time=3600 \
-    --sleep=3 &
+# This is still the single-container compromise, not the ideal setup: the
+# textbook version is a separate Render worker service (see render.yaml).
+# Do NOT run both, or you will exceed Clever Cloud's 5-connection cap.
+(
+    while true; do
+        php artisan queue:work \
+            --tries=3 \
+            --backoff=5 \
+            --max-time=3600 \
+            --sleep=3 || true
+        sleep 2
+    done
+) &
 QUEUE_PID=$!
 
-# Forward termination signals to both children so `docker stop` / Render's
-# redeploy doesn't leave an orphaned queue worker running past the web
+# Scheduler: laravel only runs scheduled commands (routes/console.php) when
+# `schedule:run` is called, and it must tick once a minute. This is what
+# triggers IssueDueSessionFines every 15 minutes and the daily
+# logs:verify check. Without this loop, scheduled fines never get issued.
+(
+    while true; do
+        php artisan schedule:run > /dev/null 2>&1 || true
+        sleep 60
+    done
+) &
+SCHEDULER_PID=$!
+
+# Forward termination signals to all children so `docker stop` / Render's
+# redeploy doesn't leave orphaned background loops running past the web
 # process's shutdown.
-trap 'kill -TERM "$QUEUE_PID" 2>/dev/null; kill -TERM "$FRANKENPHP_PID" 2>/dev/null' TERM INT
+trap 'kill -TERM "$QUEUE_PID" "$SCHEDULER_PID" "$FRANKENPHP_PID" 2>/dev/null' TERM INT
 
 frankenphp run --config /etc/caddy/Caddyfile &
 FRANKENPHP_PID=$!

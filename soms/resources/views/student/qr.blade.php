@@ -1,3 +1,4 @@
+{{-- resources/views/student/qr.blade.php --}}
 <x-layout title="My QR Code">
 
 @slot('nav')
@@ -62,16 +63,26 @@
     var countdownEl = document.getElementById('qr-countdown');
     var secondsLeft = {{ (int) $expiresIn }};
     var pollUrl = '{{ route('student.qr.current') }}';
+    var isRefreshing = false; // prevents overlapping fetches (poll + countdown + tab-return)
 
     function tickCountdown() {
+      var wasRunning = secondsLeft > 0;
       secondsLeft = Math.max(0, secondsLeft - 1);
       countdownText.textContent = secondsLeft > 0
         ? 'refreshes in ' + secondsLeft + 's'
         : 'refreshing…';
       countdownEl.classList.toggle('stale', secondsLeft <= 5);
+
+      // Fetch the new code the moment the old one rotates out, instead of
+      // waiting for the next 60s poll. Fires once on the 1 -> 0 transition,
+      // so a failed fetch doesn't get retried every second.
+      if (wasRunning && secondsLeft === 0) { refreshQr(); }
     }
 
     function refreshQr() {
+      if (isRefreshing) { return; }
+      isRefreshing = true;
+
       fetch(pollUrl, { headers: { 'Accept': 'application/json' } })
         .then(function (res) {
           if (!res.ok) { throw new Error('refresh failed'); }
@@ -88,7 +99,8 @@
         .catch(function () {
           // Silent retry on next interval — a missed poll just means the
           // visible code goes a little stale, it doesn't break anything.
-        });
+        })
+        .finally(function () { isRefreshing = false; });
     }
 
     // Tick the visible countdown every second, but only actually fetch a

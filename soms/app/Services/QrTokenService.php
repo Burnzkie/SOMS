@@ -1,4 +1,5 @@
 <?php
+// app/Services/QrTokenService.php
 
 namespace App\Services;
 

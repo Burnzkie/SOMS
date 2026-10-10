@@ -4,7 +4,9 @@ use App\Http\Controllers\Api\Auth\ChangePasswordController;
 use App\Http\Controllers\Api\Auth\ForgotPasswordController;
 use App\Http\Controllers\Api\Auth\LoginController;
 use App\Http\Controllers\Api\Auth\RegisterController;
+use App\Http\Controllers\Api\Auth\SessionController;
 use App\Http\Controllers\Api\AvatarController;
+use App\Http\Controllers\Api\AppVersionController;
 use App\Http\Controllers\Api\NotificationController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ProfileController;
@@ -24,6 +26,13 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         'data' => config('academic_programs', []),
     ]));
 
+    // Deliberately public (no auth:sanctum) — the app needs to check this
+    // before login too, so force_update can block a stale install at the
+    // login screen. See Api\AppVersionController docblock and
+    // 10-Mobile-Deployment.md Part B. Still inside the outer throttle:api
+    // group, same as /academic-programs.
+    Route::get('/app-version', [AppVersionController::class, 'show']);
+
     Route::post('/auth/login', [LoginController::class, 'login'])->middleware('throttle:login');
     Route::post('/auth/register', [RegisterController::class, 'register'])->middleware('throttle:register');
     Route::post('/auth/forgot-password', [ForgotPasswordController::class, 'sendResetLink'])
@@ -38,6 +47,15 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         // able to reach. Mirrors routes/web.php, where /change-password
         // sits outside the equivalent web group.
         Route::post('/auth/change-password', [ChangePasswordController::class, 'update']);
+
+        // Session ("logged-in devices") management — deliberately outside
+        // must.change.password.api for the same reason as change-password
+        // and logout above: a user who must change their password still
+        // needs to be able to see/kill a stolen device's session. See
+        // Api\Auth\SessionController docblock.
+        Route::get('/auth/sessions', [SessionController::class, 'index']);
+        Route::delete('/auth/sessions/{tokenId}', [SessionController::class, 'destroy']);
+        Route::post('/auth/sessions/revoke-others', [SessionController::class, 'destroyOthers']);
 
         Route::middleware('must.change.password.api')->group(function () {
             // Singleton resource — one avatar per user, no ID in the URL.

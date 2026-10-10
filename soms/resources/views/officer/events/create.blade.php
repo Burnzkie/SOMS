@@ -1,3 +1,4 @@
+{{-- resources/views/officer/events/create.blade.php --}}
 <x-layout title="New Event">
 
 @slot('nav')
@@ -70,6 +71,7 @@
         <input type="date" name="date_end" value="{{ old('date_end') }}" required class="field-input" style="width:100%;">
       </div>
     </div>
+    @include('partials.attendance-setup', ['timeWindow' => []])
     <div class="field" id="activity-field" style="margin-bottom:14px; display:none;">
       <label>Foundation Day activity <span style="font-weight:400; color:var(--text-muted);">(optional — prefills the title)</span></label>
       <select id="activity" class="field-input" style="width:100%;">
@@ -79,11 +81,10 @@
         @endforeach
       </select>
     </div>
-    <div class="field" style="margin-bottom:20px;">
-      <label style="display:flex; align-items:center; gap:8px; font-weight:500;">
-        <input type="checkbox" name="has_parade" value="1"> Include a Parade session (time-in only) on each day
-      </label>
+    <div data-setup="full_day">
+      @include('partials.parade-date-picker', ['fixedDates' => null, 'selected' => []])
     </div>
+    @include('partials.program-picker', ['selected' => []])
     <button type="submit" class="btn btn-primary" style="width:auto; padding:0 24px;">Create event</button>
   </form>
 </div>

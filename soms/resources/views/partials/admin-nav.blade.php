@@ -30,6 +30,14 @@
                                 <span class="ic">🧾</span>
                                 Activity Logs
                             </a>
+                            <a href="{{ route('admin.app-versions.index') }}" class="nav-link @if(request()->routeIs('admin.app-versions.*')) active @endIf">
+                                <span class="ic">📱</span>
+                                App Versions
+                            </a>
+                            <a href="{{ route('admin.analytics') }}" class="nav-link @if(request()->routeIs('admin.analytics')) active @endIf">
+                                <span class="ic">📈</span>
+                                Analytics
+                            </a>
                             <a href="{{ route('settings.profile.edit') }}" class="nav-link @if(request()->routeIs('settings.*')) active @endIf">
                                 <span class="ic">⚙️</span>
                                 Settings

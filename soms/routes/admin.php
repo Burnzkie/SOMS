@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OfficerAppointmentController;
 use App\Http\Controllers\Admin\PermissionController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Admin\AppVersionController;
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 Route::get('/system-health', [SystemHealthController::class, 'index'])->name('admin.system-health');
+Route::get('/analytics', [AnalyticsController::class, 'index'])->name('admin.analytics');
 Route::get('/app-versions', [AppVersionController::class, 'index'])->name('admin.app-versions.index');
 Route::post('/app-versions', [AppVersionController::class, 'store'])->name('admin.app-versions.store');
 Route::post('/app-versions/{appVersion}/deactivate', [AppVersionController::class, 'deactivate'])->name('admin.app-versions.deactivate');

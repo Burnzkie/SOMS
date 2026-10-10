@@ -1,4 +1,5 @@
 <?php
+// app/Models/Event.php
 
 namespace App\Models;
 
@@ -20,6 +21,7 @@ class Event extends Model
         'date_start',
         'date_end',
         'has_parade',
+        'target_programs',
         'is_published',
     ];
 
@@ -27,6 +29,7 @@ class Event extends Model
         'date_start'   => 'date',
         'date_end'     => 'date',
         'has_parade'   => 'boolean',
+        'target_programs' => 'array',
         'is_published' => 'boolean',
     ];
 
@@ -42,6 +45,24 @@ class Event extends Model
         return $this->image_path
             ? \Illuminate\Support\Facades\Storage::disk('r2')->url($this->image_path)
             : null;
+    }
+
+    /**
+     * Whether a student is required to attend this event. No target programs
+     * means every program is required. A student with no program on file is
+     * not required when the event targets specific programs.
+     */
+    public function appliesTo(User $student): bool
+    {
+        $targets = $this->target_programs;
+
+        if (empty($targets)) {
+            return true;
+        }
+
+        $normalize = fn ($value) => mb_strtolower(trim((string) $value));
+
+        return in_array($normalize($student->program), array_map($normalize, $targets), true);
     }
 
     public function organization(): BelongsTo

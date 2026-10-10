@@ -1,4 +1,5 @@
 <?php
+// app/Http/Controllers/Api/Officer/AttendanceController.php
 
 namespace App\Http\Controllers\Api\Officer;
 
@@ -9,6 +10,7 @@ use App\Models\EventAttendance;
 use App\Models\EventSession;
 use App\Models\User;
 use App\Services\QrTokenService;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -74,7 +76,12 @@ class AttendanceController extends Controller
             return ['session_id' => $item['session_id'], 'user_id' => $item['user_id'], 'status' => 'rejected', 'reason' => 'Session not found'];
         }
 
-        $this->authorize('scan', $session);
+        // Per-item permission check: an unauthorized session rejects only this
+        // scan. Using authorize() here would throw a 403 and abort the whole
+        // batch, losing every valid scan queued after it.
+        if (!auth()->user()->can('scan', $session)) {
+            return ['session_id' => $session->id, 'user_id' => $item['user_id'], 'status' => 'rejected', 'reason' => 'Not authorized for this session'];
+        }
 
         $deviceScannedAt = Carbon::parse($item['device_scanned_at']);
         $drift = abs($deviceScannedAt->diffInMinutes($serverReceivedAt));
@@ -116,15 +123,22 @@ class AttendanceController extends Controller
                 return ['session_id' => $session->id, 'user_id' => $userId, 'status' => 'rejected', 'reason' => 'Invalid or expired token'];
             }
 
-            $withinWindow = $windowReferenceTime->betweenIncluded(
-                Carbon::parse($session->timein_start),
-                Carbon::parse($session->timein_end)
-            );
+            // Students outside the event's required programs aren't expected to attend.
+            if (!$session->eventDay->event->appliesTo($user)) {
+                return ['session_id' => $session->id, 'user_id' => $userId, 'status' => 'rejected', 'reason' => 'Not required for this event'];
+            }
+
+            // Which window is open decides whether this is a time-in or a time-out.
+            $scanType = $session->activeScanType($windowReferenceTime);
+            $withinWindow = $scanType !== null;
+
+            // A flagged offline scan outside every window is kept as a time-in for review.
+            $scanType ??= 'time_in';
 
             $exists = EventAttendance::where([
                 'event_session_id' => $session->id,
                 'user_id'          => $user->id,
-                'scan_type'        => 'time_in',
+                'scan_type'        => $scanType,
             ])->first();
 
             if ($exists) {
@@ -137,25 +151,33 @@ class AttendanceController extends Controller
                 return ['session_id' => $session->id, 'user_id' => $userId, 'status' => 'rejected', 'reason' => 'Outside scan window'];
             }
 
-            $attendance = EventAttendance::create([
-                'event_id'                   => $session->eventDay->event_id,
-                'event_day_id'               => $session->event_day_id,
-                'event_session_id'           => $session->id,
-                'user_id'                    => $user->id,
-                'scan_type'                  => 'time_in',
-                'scanned_at'                 => $serverReceivedAt,
-                'marked_by'                  => auth()->id(),
-                'status'                     => $status,
-                'device_scanned_at'          => $isOffline ? $windowReferenceTime : null,
-                'synced_from_offline_queue'  => $isOffline,
-            ]);
+            try {
+                // Nested transaction = savepoint, so a duplicate-key error can't
+                // poison the outer transaction (matters on Postgres, harmless on MySQL).
+                $attendance = DB::transaction(fn () => EventAttendance::create([
+                    'event_id'                  => $session->eventDay->event_id,
+                    'event_day_id'              => $session->event_day_id,
+                    'event_session_id'          => $session->id,
+                    'user_id'                   => $user->id,
+                    'scan_type'                 => $scanType,
+                    'scanned_at'                => $serverReceivedAt,
+                    'marked_by'                 => auth()->id(),
+                    'status'                    => $status,
+                    'device_scanned_at'         => $isOffline ? $windowReferenceTime : null,
+                    'synced_from_offline_queue' => $isOffline,
+                ]));
+            } catch (UniqueConstraintViolationException) {
+                // Concurrent duplicate, e.g. a live scan racing the offline batch sync.
+                return ['session_id' => $session->id, 'user_id' => $userId, 'status' => 'already_marked', 'student_name' => $user->name];
+            }
 
             return [
-                'session_id'   => $session->id,
-                'user_id'      => $userId,
-                'status'       => $status,
-                'student_name' => $user->name,
-                'attendance_id'=> $attendance->id,
+                'session_id'    => $session->id,
+                'user_id'       => $userId,
+                'status'        => $status,
+                'scan_type'     => $scanType,
+                'student_name'  => $user->name,
+                'attendance_id' => $attendance->id,
             ];
         });
     }
@@ -185,6 +207,7 @@ class AttendanceController extends Controller
         }
 
         $student = User::where('student_id', $data['student_id'])->firstOrFail();
+        abort_unless($session->eventDay->event->appliesTo($student), 422, 'This student is not required for this event.');
 
         $attendance = EventAttendance::updateOrCreate(
             [

@@ -1,6 +1,6 @@
 @props(['title' => 'SOMS'])
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,16 +13,13 @@
   --ease:cubic-bezier(.4,0,.2,1);
   --font-ui:'Inter',system-ui,sans-serif;
   --font-display:'Inter Tight','Inter',system-ui,sans-serif;
-  /* Login/register stays a dramatic dark glass card over a blurred color
-     mesh — deliberately distinct from the light app interior (see
-     components/layout.blade.php), retinted to the same blue/purple/
-     emerald "lively" palette so the brand still reads as one system. */
-  --primary:#2563EB; --violet:#4F7DF3; --emerald:#10B981; --rose:#F43F5E;
-  --bg:#070B18; --text:#F3F5FC; --text-muted:#97A3C4; --text-faint:#6B77A0;
-  --border-strong:rgba(255,255,255,.14);
-  --shadow-lg: 0 24px 60px rgba(0,0,0,.55);
-  --glass-bg: rgba(20,26,46,.55);
-  --mesh-1:#2563EB; --mesh-2:#8B5CF6; --mesh-3:#10B981;
+  /* Auth screen: white card over a navy mesh, matching the SOMS mockup palette. */
+  --primary:#1D4ED8; --violet:#3B82F6; --emerald:#10B981; --rose:#F43F5E;
+  --bg:#0B1F4B; --text:#0F172A; --text-muted:#64748B; --text-faint:#94A3B8;
+  --border-strong:rgba(15,23,42,.14);
+  --shadow-lg: 0 24px 60px rgba(4,12,40,.45);
+  --glass-bg: #FFFFFF;
+  --mesh-1:#1D4ED8; --mesh-2:#3B82F6; --mesh-3:#0E2657;
 }
 *{box-sizing:border-box;}
 body{
@@ -39,17 +36,17 @@ a{color:inherit; text-decoration:none;}
     radial-gradient(circle at 18% 22%, var(--mesh-1) 0%, transparent 42%),
     radial-gradient(circle at 82% 18%, var(--mesh-2) 0%, transparent 40%),
     radial-gradient(circle at 50% 88%, var(--mesh-3) 0%, transparent 45%);
-  filter:blur(70px); opacity:.55;
+  filter:blur(90px); opacity:.6;
 }
 .auth-card{
   position:relative; z-index:2; width:100%; max-width:400px; padding:40px 36px; margin:40px 16px;
-  background:var(--glass-bg); border:1px solid rgba(255,255,255,.18);
-  border-radius:var(--radius-lg); backdrop-filter:blur(22px) saturate(140%);
+  background:var(--glass-bg); border:1px solid rgba(15,23,42,.06);
+  border-radius:var(--radius-lg);
   box-shadow:var(--shadow-lg);
 }
 .auth-logo{
   width:64px; height:64px; border-radius:16px; margin:0 auto 22px auto;
-  background:linear-gradient(135deg,var(--primary),var(--violet));
+  background:#0B1F4B;
   display:flex; align-items:center; justify-content:center; padding:4px;
 }
 .auth-logo img{
@@ -84,6 +81,11 @@ a{color:inherit; text-decoration:none;}
 .alert-success{background:rgba(16,185,129,.14); color:var(--emerald); border:1px solid rgba(16,185,129,.3);}
 .alert-error{background:rgba(244,63,94,.14); color:var(--rose); border:1px solid rgba(244,63,94,.3);}
 
+/* Inputs and alerts were tuned for a dark card; retuned for the white one */
+.field input, .field select{background:#F5F7FC;}
+.btn-primary{box-shadow:0 8px 20px rgba(29,78,216,.28);}
+.alert-success{background:rgba(16,185,129,.12); color:#0B7C56; border-color:rgba(16,185,129,.3);}
+.alert-error{background:rgba(244,63,94,.10); color:#D00C2E; border-color:rgba(244,63,94,.3);}
 
 @media (max-width: 420px){
   .field-grid{grid-template-columns:1fr;}

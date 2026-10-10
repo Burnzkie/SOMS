@@ -1,4 +1,5 @@
 <?php
+// app/Http/Controllers/Officer/AttendanceController.php
 
 namespace App\Http\Controllers\Officer;
 
@@ -10,6 +11,7 @@ use App\Models\EventSession;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\QrTokenService;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
@@ -50,12 +52,11 @@ class AttendanceController extends Controller
         $this->authorize('scan', $session);
 
         $now = now();
-        $withinWindow = $now->betweenIncluded(
-            Carbon::parse($session->timein_start),
-            Carbon::parse($session->timein_end)
-        );
 
-        if (!$withinWindow) {
+        // Which window is open decides whether this scan is a time-in or a time-out.
+        $scanType = $session->activeScanType($now);
+
+        if ($scanType === null) {
             return response()->json(['status' => 'rejected', 'reason' => 'Outside scan window']);
         }
 
@@ -69,35 +70,55 @@ class AttendanceController extends Controller
         [$userId, $token] = array_pad(explode(':', $data['token'], 2), 2, null);
 
         $user = User::where('id', $userId)->where('is_approved', true)->first();
-        abort_if(!$user || !$token, 422, 'Invalid QR payload.');
-        abort_unless(QrTokenService::verify($user, $token, $now->timestamp), 422, 'Invalid or expired token.');
+
+        // Same {status, reason} shape as every other scan failure, so the
+        // scan station JS only needs one branch for rejections.
+        if (!$user || !$token) {
+            return response()->json(['status' => 'rejected', 'reason' => 'Invalid QR payload.']);
+        }
+
+        if (!QrTokenService::verify($user, $token, $now->timestamp)) {
+            return response()->json(['status' => 'rejected', 'reason' => 'Invalid or expired QR code.']);
+        }
+
+        // Students outside the event's required programs aren't expected to attend.
+        if (!$session->eventDay->event->appliesTo($user)) {
+            return response()->json(['status' => 'rejected', 'reason' => 'Not required for this event']);
+        }
 
         $exists = EventAttendance::where([
             'event_session_id' => $session->id,
             'user_id'          => $user->id,
-            'scan_type'        => 'time_in',
+            'scan_type'        => $scanType,
         ])->exists();
 
         if ($exists) {
             return response()->json(['status' => 'already_marked', 'student_name' => $user->name]);
         }
 
-        EventAttendance::create([
-            'event_id'         => $session->eventDay->event_id,
-            'event_day_id'     => $session->event_day_id,
-            'event_session_id' => $session->id,
-            'user_id'          => $user->id,
-            'scan_type'        => 'time_in',
-            'scanned_at'       => $now,
-            'marked_by'        => auth()->id(),
-            'status'           => 'present',
-        ]);
+        try {
+            EventAttendance::create([
+                'event_id'         => $session->eventDay->event_id,
+                'event_day_id'     => $session->event_day_id,
+                'event_session_id' => $session->id,
+                'user_id'          => $user->id,
+                'scan_type'        => $scanType,
+                'scanned_at'       => $now,
+                'marked_by'        => auth()->id(),
+                'status'           => 'present',
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            // Lost the race to a concurrent scan of the same QR — treat as a normal duplicate.
+            return response()->json(['status' => 'already_marked', 'student_name' => $user->name]);
+        }
 
         return response()->json([
-            'status'       => 'present',
-            'student_name' => $user->name,
-            'department'   => $user->department,
-            'session'      => $session->session_type,
+            'status'        => 'present',
+            'student_name'  => $user->name,
+            'department'    => $user->department,
+            'session'       => $session->session_type,
+            'session_label' => $session->label,
+            'scan_type'     => $scanType,
         ]);
     }
 
@@ -137,6 +158,7 @@ class AttendanceController extends Controller
         }
 
         $student = User::where('student_id', $data['student_id'])->firstOrFail();
+        abort_unless($session->eventDay->event->appliesTo($student), 422, 'This student is not required for this event.');
 
         $attendance = EventAttendance::updateOrCreate(
             [
