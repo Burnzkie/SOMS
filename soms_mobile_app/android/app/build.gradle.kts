@@ -14,16 +14,33 @@ plugins {
 // to the debug keystore with a build-time warning otherwise, so CI/local
 // builds still work but nobody ships an unsigned-for-real release by
 // accident without at least being told.
+//
+// Credential-separation fix (Sep 2026): key.properties was already
+// git-ignored (android/.gitignore), but a plain zip of the project folder
+// has no concept of .gitignore and would still include it. Prefer an
+// external copy at ../../../soms-secrets/soms_mobile_app/key.properties
+// relative to android/ (three levels up: android -> soms_mobile_app ->
+// repo root -> outside it) -- a SIBLING of the repo root (D:\soms\),
+// outside it entirely -- if one exists (see scripts/setup-secrets.ps1),
+// so it can never be inside anything zipped from D:\soms\. Falls back to
+// the local file so nothing breaks if that external folder doesn't exist.
 val keystoreProperties = Properties()
-val keystorePropertiesFile = rootProject.file("key.properties")
+val externalKeyPropertiesFile = File(
+    rootProject.projectDir.parentFile.parentFile.parentFile,
+    "soms-secrets/soms_mobile_app/key.properties"
+)
+val keystorePropertiesFile =
+    if (externalKeyPropertiesFile.exists()) externalKeyPropertiesFile
+    else rootProject.file("key.properties")
 val hasReleaseKeystore = keystorePropertiesFile.exists()
 if (hasReleaseKeystore) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 } else {
     logger.warn(
-        "WARNING: android/key.properties not found -- release builds will " +
-        "be signed with the DEBUG keystore. Fine for sideloaded testing, " +
-        "NOT fine for real distribution. See android/key.properties.example."
+        "WARNING: key.properties not found (checked ../../../soms-secrets/" +
+        "soms_mobile_app/ and android/key.properties) -- release builds " +
+        "will be signed with the DEBUG keystore. Fine for sideloaded " +
+        "testing, NOT fine for real distribution. See android/key.properties.example."
     )
 }
 

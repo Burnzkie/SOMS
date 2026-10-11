@@ -1,0 +1,12 @@
+# Repo-root .gitignore (soms/ and soms_mobile_app/ each have their own
+# more specific ones already -- this one only covers things that land
+# at the repo root itself).
+
+# Output of scripts/safe-zip.ps1 -- never meant to be committed.
+*.zip
+
+# Safety net: this should always live at D:\soms-secrets\, a SIBLING of
+# this repo, never inside it -- see scripts/setup-secrets.ps1. If it ever
+# ends up nested in here by mistake (e.g. the script run from an
+# unexpected working directory), this stops it from being committable.
+/soms-secrets/

@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'core/api_config.dart';
 import 'providers/auth_provider.dart';
@@ -9,12 +11,34 @@ import 'screens/auth/login_screen.dart';
 import 'screens/officer/officer_home_screen.dart';
 import 'screens/student/student_home_screen.dart';
 
-void main() {
+Future<void> main() async {
   // Deploy-readiness fix (Sep 2026): fail loudly at startup if a release
   // build forgot --dart-define=API_BASE_URL, instead of installing fine
   // and then silently failing every API call. See ApiConfig for details.
   ApiConfig.assertConfiguredForRelease();
-  runApp(const ProviderScope(child: SomsApp()));
+
+  // Error tracking (Sep 2026). SENTRY_DSN comes from --dart-define at
+  // build time (same mechanism as API_BASE_URL above), not from a
+  // committed file -- an empty DSN makes the SDK a safe no-op rather
+  // than an error, so this doesn't break local runs without one
+  // configured. See CHANGES.md for where to get a DSN and the exact
+  // --dart-define flag to add to your existing build/run commands.
+  //
+  // sendDefaultPii is explicitly false to match config/sentry.php on
+  // the Laravel side: SOMS handles student records under RA 10173, so
+  // device identifiers and IP address are never attached to error
+  // reports. Sentry.configureScope's user id is likewise never set
+  // anywhere in this app.
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = const String.fromEnvironment('SENTRY_DSN');
+      options.tracesSampleRate = 0.2;
+      options.sendDefaultPii = false;
+      options.attachScreenshot = false;
+      options.environment = kReleaseMode ? 'production' : 'development';
+    },
+    appRunner: () => runApp(const ProviderScope(child: SomsApp())),
+  );
 }
 
 // "Lively" light-first direction (Sept 2026 redesign) — vivid blue primary,
