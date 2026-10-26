@@ -1,8 +1,10 @@
 <?php
+// routes/admin.php
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\AnalyticsController;
+use App\Http\Controllers\Admin\AppVersionController;
 use App\Http\Controllers\Admin\AuditFindingController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OfficerAppointmentController;
@@ -11,15 +13,18 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SystemHealthController;
 use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\AppVersionController;
-
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 Route::get('/system-health', [SystemHealthController::class, 'index'])->name('admin.system-health');
 Route::get('/analytics', [AnalyticsController::class, 'index'])->name('admin.analytics');
+
+// App versions (in-app auto-update)
 Route::get('/app-versions', [AppVersionController::class, 'index'])->name('admin.app-versions.index');
 Route::post('/app-versions', [AppVersionController::class, 'store'])->name('admin.app-versions.store');
+Route::get('/app-versions/{appVersion}/edit', [AppVersionController::class, 'edit'])->name('admin.app-versions.edit');
+Route::put('/app-versions/{appVersion}', [AppVersionController::class, 'update'])->name('admin.app-versions.update');
 Route::post('/app-versions/{appVersion}/deactivate', [AppVersionController::class, 'deactivate'])->name('admin.app-versions.deactivate');
+
 Route::get('/users', [UserController::class, 'index'])->name('admin.users.index');
 Route::get('/users/{user}/activity-log', [UserController::class, 'activityLog'])->name('admin.users.activity-log');
 Route::post('/users/{user}/approve', [UserController::class, 'approve'])->name('admin.users.approve');

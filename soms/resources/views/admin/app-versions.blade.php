@@ -1,3 +1,4 @@
+{{-- resources/views/admin/app-versions.blade.php --}}
 <x-layout title="App Versions">
 
 @slot('nav')
@@ -34,14 +35,14 @@
         </div>
 
         <div>
-            <label for="version_name">Version name (e.g. 1.1.0 — matches pubspec.yaml before the +)</label>
+            <label for="version_name">Version name (e.g. 1.4.0 — matches pubspec.yaml before the +)</label>
             <input type="text" id="version_name" name="version_name" class="field-input" value="{{ old('version_name') }}" required maxlength="20">
             @error('version_name')<div class="meta" style="color:#f87171;">{{ $message }}</div>@enderror
         </div>
 
         <div>
             <label for="apk_url">APK URL (upload the signed release APK to R2 first, then paste the public URL here)</label>
-            <input type="url" id="apk_url" name="apk_url" class="field-input" value="{{ old('apk_url') }}" required maxlength="2048" placeholder="https://.../soms-1.1.0.apk">
+            <input type="url" id="apk_url" name="apk_url" class="field-input" value="{{ old('apk_url') }}" required maxlength="2048" placeholder="https://.../soms-1.4.0-6.apk">
             @error('apk_url')<div class="meta" style="color:#f87171;">{{ $message }}</div>@enderror
         </div>
 
@@ -102,9 +103,10 @@
                     </td>
                     <td>{{ $v->publisher?->name ?? '—' }}</td>
                     <td>{{ $v->created_at->format('M j, Y g:i A') }}</td>
-                    <td>
+                    <td style="white-space:nowrap;">
+                        <a href="{{ route('admin.app-versions.edit', $v) }}" class="link-sm">Edit</a>
                         @if($v->is_active)
-                        <form method="POST" action="{{ route('admin.app-versions.deactivate', $v) }}" onsubmit="return confirm('Deactivate version {{ $v->version_name }}? The app will fall back to the next active version.');">
+                        <form method="POST" action="{{ route('admin.app-versions.deactivate', $v) }}" style="display:inline;" onsubmit="return confirm('Deactivate version {{ $v->version_name }}? The app will fall back to the next active version.');">
                             @csrf
                             <button type="submit" class="link-sm" style="background:none;border:none;cursor:pointer;color:#f87171;">Deactivate</button>
                         </form>
