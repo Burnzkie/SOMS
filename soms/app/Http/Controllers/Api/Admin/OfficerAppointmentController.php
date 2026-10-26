@@ -63,6 +63,8 @@ class OfficerAppointmentController extends Controller
             'approvedStudents' => $approvedStudents,
             'academicYear'     => $academicYear,
             'availablePermissions' => OfficerPermission::PERMISSIONS,
+            // Recommended access per position, for the "Apply recommended" button.
+            'permissionPresets'    => OfficerPermission::PRESETS,
         ]]);
     }
 
@@ -77,7 +79,11 @@ class OfficerAppointmentController extends Controller
             'permissions'     => 'nullable|array',
             'permissions.*'   => 'in:' . implode(',', array_keys(OfficerPermission::PERMISSIONS)),
         ]);
-        $permissions = array_values($data['permissions'] ?? []);
+        // No list means "use the recommended access for this position"; an
+        // explicit list, even an empty one, is used exactly as sent.
+        $permissions = is_array($data['permissions'] ?? null)
+            ? array_values($data['permissions'])
+            : OfficerPermission::presetFor($data['position_title']);
 
         $user = User::where('id', $data['user_id'])->where('is_approved', true)->firstOrFail();
         $org = Organization::first();

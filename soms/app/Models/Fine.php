@@ -19,6 +19,7 @@ class Fine extends Model
         'issued_at',
         'cleared_by',
         'cleared_at',
+        'receipt_number',
     ];
 
     protected $casts = [
@@ -55,6 +56,11 @@ class Fine extends Model
     public function scopeUnpaid($query)
     {
         return $query->where('status', 'unpaid');
+    }
+
+    public function scopePaid($query)
+    {
+        return $query->where('status', 'paid');
     }
 
     public function scopeWaived($query)

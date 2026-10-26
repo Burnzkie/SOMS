@@ -41,6 +41,52 @@
     @endif
 </div>
 
+@php($canAudit = collect(['view_reports', 'view_fines', 'view_attendance', 'view_audit_logs', 'manage_audit_findings'])->contains(fn ($p) => $perms[$p] ?? false))
+@if($canAudit)
+<div class="nav-group">
+    <div class="nav-label">Audit</div>
+
+    @if($perms['view_reports'] ?? false)
+        <a href="{{ route('officer.audit.dashboard') }}" class="nav-link @if(request()->routeIs('officer.audit.dashboard')) active @endif">
+            <span class="ic green">🧮</span>
+            Audit Overview
+        </a>
+        <a href="{{ route('officer.audit.discrepancies') }}" class="nav-link @if(request()->routeIs('officer.audit.discrepancies')) active @endif">
+            <span class="ic rose">🔎</span>
+            Discrepancies
+        </a>
+    @endif
+
+    @if($perms['view_fines'] ?? false)
+        <a href="{{ route('officer.audit.fines') }}" class="nav-link @if(request()->routeIs('officer.audit.fines')) active @endif">
+            <span class="ic green">💲</span>
+            Fines &amp; Payments
+        </a>
+    @endif
+
+    @if($perms['view_attendance'] ?? false)
+        <a href="{{ route('officer.audit.attendance') }}" class="nav-link @if(request()->routeIs('officer.audit.attendance')) active @endif">
+            <span class="ic orange">📋</span>
+            Attendance Records
+        </a>
+    @endif
+
+    @if(($perms['manage_audit_findings'] ?? false) || ($perms['view_reports'] ?? false))
+        <a href="{{ route('officer.audit.findings.index') }}" class="nav-link @if(request()->routeIs('officer.audit.findings.*')) active @endif">
+            <span class="ic amber">📝</span>
+            Audit Findings
+        </a>
+    @endif
+
+    @if($perms['view_audit_logs'] ?? false)
+        <a href="{{ route('officer.audit.activity-log') }}" class="nav-link @if(request()->routeIs('officer.audit.activity-log')) active @endif">
+            <span class="ic">🧾</span>
+            Activity Log
+        </a>
+    @endif
+</div>
+@endif
+
 <div class="nav-group">
     <a href="{{ route('settings.profile.edit') }}" class="nav-link @if(request()->routeIs('settings.*')) active @endif">
         <span class="ic">⚙️</span>

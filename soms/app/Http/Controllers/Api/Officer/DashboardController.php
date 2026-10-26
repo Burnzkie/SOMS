@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Officer;
 use App\Http\Controllers\Controller;
 use App\Models\Organization;
 use App\Models\User;
+use App\Support\OfficerPermission;
 use Illuminate\Http\Request;
 
 /**
@@ -15,6 +16,11 @@ use Illuminate\Http\Request;
  * organization member count, since officers have no /officer/members
  * list endpoint on either platform (member management is Admin-only;
  * see resources/views/partials/officer-nav.blade.php).
+ *
+ * Also lists the permissions this officer holds, because the login response
+ * carries no position or permissions: the app uses it to show the Audit
+ * workspace only to officers who have an audit permission, instead of
+ * showing it to everyone and answering 403.
  */
 class DashboardController extends Controller
 {
@@ -22,6 +28,15 @@ class DashboardController extends Controller
     {
         return $request->user()->activeOfficerPosition?->organization_id
             ?? Organization::query()->value('id');
+    }
+
+    /** @return array<int, string> keys of the permissions this officer currently holds */
+    private function heldPermissions(User $user): array
+    {
+        return collect(array_keys(OfficerPermission::PERMISSIONS))
+            ->filter(fn (string $permission) => OfficerPermission::can($user, $permission))
+            ->values()
+            ->all();
     }
 
     public function summary(Request $request)
@@ -36,6 +51,7 @@ class DashboardController extends Controller
             'success' => true,
             'data' => [
                 'active_members' => $activeMembers,
+                'permissions'    => $this->heldPermissions($request->user()),
             ],
         ]);
     }

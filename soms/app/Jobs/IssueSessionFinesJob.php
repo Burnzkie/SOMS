@@ -29,6 +29,12 @@ class IssueSessionFinesJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /**
+     * Scan statuses that excuse a fine: 'present', or 'flagged_for_review'
+     * (pending officer decision). 'late' and 'absent' are NOT excused.
+     */
+    private const ATTENDED_STATUSES = ['present', 'flagged_for_review'];
+
     public $tries = 3;
     public $backoff = 100;
 
@@ -121,14 +127,20 @@ class IssueSessionFinesJob implements ShouldQueue
             return;
         }
 
-        foreach ($students as $student) {
-            $marked = EventAttendance::where([
-                'event_session_id' => $session->id,
-                'user_id'          => $student->id,
-                'scan_type'        => $scanType,
-            ])->where('status', 'present')->exists();
+        // One query for everyone who already attended this scan type, instead
+        // of one exists() query per student (~800 per run, repeated every 15
+        // minutes by the scheduler while a time-out window is still open).
+        // 'flagged_for_review' is a pending offline scan (device clock drift),
+        // not an absence, so it isn't fined until an officer rejects it
+        // (Api\Officer\AttendanceController::reviewFlagged). 'late' is fined.
+        $attendedUserIds = EventAttendance::where('event_session_id', $session->id)
+            ->where('scan_type', $scanType)
+            ->whereIn('status', self::ATTENDED_STATUSES)
+            ->pluck('user_id')
+            ->flip(); // flip() makes has() a constant-time lookup
 
-            if ($marked) {
+        foreach ($students as $student) {
+            if ($attendedUserIds->has($student->id)) {
                 continue;
             }
 

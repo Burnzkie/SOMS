@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/admin_models.dart';
+import '../models/audit_models.dart';
 import '../models/fine.dart';
 import '../models/paginated.dart';
+import 'audit_providers.dart' show AuditFindingQuery;
 import 'auth_provider.dart';
 
 /// [status] filters to pending/approved; null fetches all. [search] filters
@@ -40,6 +42,30 @@ final officerAppointmentPanelProvider = FutureProvider.autoDispose<
   final availablePermissions = (data['availablePermissions'] as Map<String, dynamic>? ?? {})
       .map((k, v) => MapEntry(k, v.toString()));
   return (panel, students, data['academicYear'] as String? ?? '', availablePermissions);
+});
+
+/// GET /api/v1/admin/audit-findings -> (the page of findings, how many still
+/// need action). The Admin acknowledges and resolves what the Auditor reported.
+final adminFindingsProvider = FutureProvider.autoDispose
+    .family<(Paginated<AuditFinding>, int), AuditFindingQuery>((ref, query) async {
+  final api = ref.watch(apiClientProvider);
+  final res = await api.get('/admin/audit-findings', query: {
+    if (query.status.isNotEmpty) 'status': query.status,
+    'page': query.page,
+  });
+  final page = Paginated.fromJson(res['data'] as Map<String, dynamic>, AuditFinding.fromJson);
+  final meta = res['meta'] as Map<String, dynamic>? ?? {};
+  return (page, (meta['active_count'] as num?)?.toInt() ?? 0);
+});
+
+/// Recommended permissions per position title, from GET /admin/officers
+/// (permissionPresets). Only fetched when the Admin taps "Apply recommended".
+final permissionPresetsProvider = FutureProvider.autoDispose<Map<String, List<String>>>((ref) async {
+  final api = ref.watch(apiClientProvider);
+  final res = await api.get('/admin/officers');
+  final data = res['data'] as Map<String, dynamic>;
+  final raw = data['permissionPresets'] as Map<String, dynamic>? ?? {};
+  return raw.map((title, keys) => MapEntry(title, (keys as List<dynamic>).map((e) => '$e').toList()));
 });
 
 final activityLogsProvider = FutureProvider.autoDispose<(Paginated<ActivityLogEntry>, bool)>((ref) async {

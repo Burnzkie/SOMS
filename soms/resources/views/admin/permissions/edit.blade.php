@@ -29,9 +29,25 @@
             @endforeach
         </div>
 
-        <button type="submit" class="mini-btn approve" style="margin-top:16px;">Save permissions</button>
+        <div style="display:flex; align-items:center; gap:10px; margin-top:16px; flex-wrap:wrap;">
+            <button type="submit" class="mini-btn approve">Save permissions</button>
+            {{-- Ticks the boxes recommended for this position. Nothing is saved until Save is pressed. --}}
+            <button type="button" class="mini-btn" id="apply-recommended"
+                    data-recommended='@json($recommended)'>Apply recommended for {{ $position->position_title }}</button>
+        </div>
     </form>
 </div>
+
+<script>
+// "Apply recommended": tick exactly the boxes recommended for this position.
+// Only changes the form; the Admin still reviews and presses Save.
+document.getElementById('apply-recommended').addEventListener('click', function () {
+  var recommended = JSON.parse(this.getAttribute('data-recommended'));
+  document.querySelectorAll('input[name="permissions[]"]').forEach(function (box) {
+    box.checked = recommended.indexOf(box.value) !== -1;
+  });
+});
+</script>
 @endslot
 
 </x-layout>

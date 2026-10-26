@@ -9,6 +9,7 @@ use App\Models\ActivityLog;
 use App\Models\EventAttendance;
 use App\Models\EventSession;
 use App\Models\User;
+use App\Services\FlaggedScanReviewService;
 use App\Services\QrTokenService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
@@ -237,6 +238,61 @@ class AttendanceController extends Controller
             'student_id'    => $student->student_id,
             'scan_type'     => $data['scan_type'],
         ]]);
+    }
+
+    /**
+     * GET /api/v1/officer/attendance/sessions/{session}/flagged
+     * Offline scans held for review (device clock drifted more than 10 min).
+     * Students with a flagged scan are NOT fined until an officer rejects it.
+     */
+    public function flagged(EventSession $session)
+    {
+        $this->authorize('review', $session);
+
+        $scans = EventAttendance::with('user:id,name,student_id')
+            ->where('event_session_id', $session->id)
+            ->where('status', 'flagged_for_review')
+            ->orderBy('scanned_at')
+            ->get()
+            ->map(fn (EventAttendance $scan) => [
+                'attendance_id'     => $scan->id,
+                'student_name'      => $scan->user->name,
+                'student_id'        => $scan->user->student_id,
+                'scan_type'         => $scan->scan_type,
+                'device_scanned_at' => $scan->device_scanned_at?->toIso8601String(),
+                'server_received_at' => $scan->scanned_at->toIso8601String(),
+            ]);
+
+        return response()->json(['success' => true, 'data' => $scans]);
+    }
+
+    /**
+     * POST /api/v1/officer/attendance/{attendance}/review
+     * Approve -> 'present'. Reject -> 'absent' + fines re-dispatched.
+     * Rules live in FlaggedScanReviewService (shared with the web controller).
+     */
+    public function reviewFlagged(Request $request, EventAttendance $attendance, FlaggedScanReviewService $reviews)
+    {
+        $this->authorize('review', $attendance->eventSession);
+
+        $data = $request->validate([
+            'decision' => 'required|in:approve,reject',
+        ]);
+
+        $approved = $data['decision'] === 'approve';
+
+        if (!$reviews->review($attendance, $approved, auth()->id())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This scan is not waiting for review.',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $approved ? 'Scan approved.' : 'Scan rejected — the student will be fined if the window has closed.',
+            'data'    => ['attendance_id' => $attendance->id, 'status' => $attendance->status],
+        ]);
     }
 
     /**

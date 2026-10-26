@@ -30,6 +30,10 @@
                                 <span class="ic">🧾</span>
                                 Activity Logs
                             </a>
+                            <a href="{{ route('admin.audit-findings.index') }}" class="nav-link @if(request()->routeIs('admin.audit-findings.*')) active @endif">
+                                <span class="ic amber">📝</span>
+                                Audit Findings
+                            </a>
                             <a href="{{ route('admin.app-versions.index') }}" class="nav-link @if(request()->routeIs('admin.app-versions.*')) active @endIf">
                                 <span class="ic">📱</span>
                                 App Versions

@@ -10,6 +10,7 @@ use App\Models\EventAttendance;
 use App\Models\EventSession;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\FlaggedScanReviewService;
 use App\Services\QrTokenService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
@@ -34,7 +35,41 @@ class AttendanceController extends Controller
 
         $session->load('eventDay.event');
 
-        return view('officer.attendance.scan', compact('session'));
+        // Offline scans held for review. Only officers who can review see them;
+        // a delegate can scan here but doesn't get the review panel.
+        $flaggedScans = auth()->user()->can('review', $session)
+            ? EventAttendance::with('user:id,name,student_id')
+                ->where('event_session_id', $session->id)
+                ->where('status', 'flagged_for_review')
+                ->orderBy('scanned_at')
+                ->get()
+            : collect();
+
+        return view('officer.attendance.scan', compact('session', 'flaggedScans'));
+    }
+
+    /**
+     * POST /officer/attendance/{attendance}/review
+     * Approve or reject a flagged offline scan (web counterpart of the API
+     * endpoint -- both go through FlaggedScanReviewService).
+     */
+    public function reviewFlagged(Request $request, EventAttendance $attendance, FlaggedScanReviewService $reviews)
+    {
+        $this->authorize('review', $attendance->eventSession);
+
+        $data = $request->validate([
+            'decision' => 'required|in:approve,reject',
+        ]);
+
+        $approved = $data['decision'] === 'approve';
+
+        if (!$reviews->review($attendance, $approved, auth()->id())) {
+            return back()->withErrors(['review' => 'This scan was already reviewed.']);
+        }
+
+        return back()->with('status', $approved
+            ? 'Scan approved — marked present.'
+            : 'Scan rejected — the student will be fined if the window has closed.');
     }
 
     /**

@@ -1,3 +1,6 @@
+// lib/models/event.dart
+import 'dart:convert';
+
 class EventFineRule {
   const EventFineRule({required this.violationType, required this.amount});
 
@@ -72,7 +75,11 @@ class SessionDelegate {
 }
 
 class EventDay {
-  const EventDay({required this.id, required this.date, this.label, required this.sessions});
+  const EventDay(
+      {required this.id,
+      required this.date,
+      this.label,
+      required this.sessions});
 
   final int id;
   final String date;
@@ -102,6 +109,7 @@ class SomsEvent {
     required this.dateEnd,
     required this.hasParade,
     required this.isPublished,
+    this.targetPrograms = const [],
     this.eventDays = const [],
     this.fineRules = const [],
   });
@@ -110,15 +118,31 @@ class SomsEvent {
   final String title;
   final String? description;
   final String? venue;
-  final String type; // see App\Support\EventTypes — kEventTypePresets in calendar_screen.dart mirrors this list
+  final String
+      type; // see App\Support\EventTypes — kEventTypePresets in calendar_screen.dart mirrors this list
   final String? imageUrl;
   final String? color;
   final String dateStart;
   final String dateEnd;
   final bool hasParade;
   final bool isPublished;
+
+  /// Programs required to attend. Empty = every program (backend stores null).
+  final List<String> targetPrograms;
   final List<EventDay> eventDays;
   final List<EventFineRule> fineRules;
+
+  /// Accepts a JSON list, or a JSON-encoded string in case the column isn't cast to an array.
+  static List<String> _parsePrograms(dynamic raw) {
+    if (raw is String && raw.isNotEmpty) {
+      try {
+        raw = jsonDecode(raw);
+      } on FormatException {
+        return const [];
+      }
+    }
+    return raw is List ? raw.map((e) => e.toString()).toList() : const [];
+  }
 
   factory SomsEvent.fromJson(Map<String, dynamic> json) => SomsEvent(
         id: json['id'] as int,
@@ -132,6 +156,7 @@ class SomsEvent {
         dateEnd: json['date_end'] as String? ?? '',
         hasParade: json['has_parade'] as bool? ?? false,
         isPublished: json['is_published'] as bool? ?? false,
+        targetPrograms: _parsePrograms(json['target_programs']),
         eventDays: (json['event_days'] as List<dynamic>? ?? [])
             .map((e) => EventDay.fromJson(e as Map<String, dynamic>))
             .toList(),
@@ -156,7 +181,8 @@ class MyAttendanceRecord {
   final String status;
   final String? scannedAt;
 
-  factory MyAttendanceRecord.fromJson(Map<String, dynamic> json) => MyAttendanceRecord(
+  factory MyAttendanceRecord.fromJson(Map<String, dynamic> json) =>
+      MyAttendanceRecord(
         eventSessionId: json['event_session_id'] as int,
         scanType: json['scan_type'] as String? ?? '',
         status: json['status'] as String? ?? '',

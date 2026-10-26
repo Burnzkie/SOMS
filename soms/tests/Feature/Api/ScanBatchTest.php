@@ -6,12 +6,16 @@ namespace Tests\Feature\Api;
 use App\Models\Event;
 use App\Models\EventAttendance;
 use App\Models\EventDay;
+use App\Models\EventFineRule;
 use App\Models\EventSession;
+use App\Models\Fine;
 use App\Models\OfficerPosition;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\QrTokenService;
+use App\Jobs\IssueSessionFinesJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -219,5 +223,109 @@ class ScanBatchTest extends TestCase
         ]);
 
         $response->assertForbidden();
+    }
+
+    // ---------------------------------------------------------------
+    // Reviewing flagged scans (approve / reject)
+    // ---------------------------------------------------------------
+
+    /** Creates a flagged_for_review time-in scan for a fresh approved student. */
+    protected function makeFlaggedScan(): EventAttendance
+    {
+        $student = User::factory()->create(['is_approved' => true]);
+
+        return EventAttendance::create([
+            'event_id'          => $this->session->eventDay->event_id,
+            'event_day_id'      => $this->session->event_day_id,
+            'event_session_id'  => $this->session->id,
+            'user_id'           => $student->id,
+            'scan_type'         => 'time_in',
+            'scanned_at'        => now(),
+            'device_scanned_at' => now()->subMinutes(25),
+            'status'            => 'flagged_for_review',
+            'synced_from_offline_queue' => true,
+        ]);
+    }
+
+    public function test_flagged_scans_are_listed_for_review(): void
+    {
+        $scan = $this->makeFlaggedScan();
+
+        $this->getJson("/api/v1/officer/attendance/sessions/{$this->session->id}/flagged")
+            ->assertOk()
+            ->assertJsonPath('data.0.attendance_id', $scan->id);
+    }
+
+    public function test_approving_a_flagged_scan_marks_the_student_present(): void
+    {
+        $scan = $this->makeFlaggedScan();
+
+        $this->postJson("/api/v1/officer/attendance/{$scan->id}/review", ['decision' => 'approve'])
+            ->assertOk();
+
+        $this->assertSame('present', $scan->fresh()->status);
+        $this->assertDatabaseHas('activity_logs', ['action' => 'flagged_scan_approved']);
+    }
+
+    public function test_rejecting_a_flagged_scan_marks_absent_and_the_student_is_then_fined(): void
+    {
+        // Window already closed, and fines were already issued once, so only
+        // the re-dispatch on reject can ever fine this student.
+        $this->session->update([
+            'timein_end'   => now()->subMinutes(5),
+            'fines_issued' => true,
+        ]);
+        EventFineRule::create([
+            'event_id'       => $this->session->eventDay->event_id,
+            'violation_type' => 'missed_morning_timein',
+            'amount'         => 50,
+        ]);
+        $scan = $this->makeFlaggedScan();
+
+        $this->postJson("/api/v1/officer/attendance/{$scan->id}/review", ['decision' => 'reject'])
+            ->assertOk();
+
+        $this->assertSame('absent', $scan->fresh()->status);
+        $this->assertDatabaseHas('fines', [
+            'user_id'        => $scan->user_id,
+            'violation_type' => 'missed_morning_timein',
+            'status'         => 'unpaid',
+        ]);
+    }
+
+    public function test_rejecting_dispatches_fine_issuance_without_force(): void
+    {
+        Queue::fake();
+        $scan = $this->makeFlaggedScan();
+
+        $this->postJson("/api/v1/officer/attendance/{$scan->id}/review", ['decision' => 'reject'])
+            ->assertOk();
+
+        Queue::assertPushed(
+            IssueSessionFinesJob::class,
+            fn (IssueSessionFinesJob $job) => $job->sessionId === $this->session->id && $job->force === false
+        );
+    }
+
+    public function test_a_scan_that_is_not_flagged_cannot_be_reviewed(): void
+    {
+        $scan = $this->makeFlaggedScan();
+        $scan->update(['status' => 'present']);
+
+        $this->postJson("/api/v1/officer/attendance/{$scan->id}/review", ['decision' => 'reject'])
+            ->assertStatus(422);
+
+        $this->assertSame('present', $scan->fresh()->status);
+    }
+
+    public function test_a_non_officer_cannot_review_flagged_scans(): void
+    {
+        $scan = $this->makeFlaggedScan();
+        Sanctum::actingAs(User::factory()->create(['is_approved' => true]), ['*']);
+
+        $this->postJson("/api/v1/officer/attendance/{$scan->id}/review", ['decision' => 'approve'])
+            ->assertForbidden();
+
+        $this->assertSame('flagged_for_review', $scan->fresh()->status);
     }
 }

@@ -11,6 +11,7 @@ use App\Models\OfficerPosition;
 use App\Models\Organization;
 use App\Models\OrganizationMember;
 use App\Models\User;
+use App\Support\OfficerPermission;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Hash;
@@ -114,6 +115,8 @@ class DevSeeder extends Seeder
                     'is_active'    => true,
                     'appointed_at' => now(),
                     'appointed_by' => $admin->id,
+                    // Recommended access for the position, as a real appointment now gets.
+                    'permissions'  => OfficerPermission::presetFor($position),
                 ]
             );
 
@@ -229,6 +232,9 @@ class DevSeeder extends Seeder
         EventSession::firstOrCreate(
             ['event_day_id' => $eventDay->id, 'session_type' => 'morning'],
             [
+                // Unique per day since the custom-sessions migration — without it every
+                // session defaults to 0 and the second insert violates the key.
+                'sort_order'    => 1,
                 'timein_start'  => $date . ' 07:00:00',
                 'timein_end'    => $date . ' 08:00:00',
                 'timeout_start' => $date . ' 11:30:00',
@@ -241,6 +247,9 @@ class DevSeeder extends Seeder
         EventSession::firstOrCreate(
             ['event_day_id' => $eventDay->id, 'session_type' => 'afternoon'],
             [
+                // Unique per day since the custom-sessions migration — without it every
+                // session defaults to 0 and the second insert violates the key.
+                'sort_order'    => 2,
                 'timein_start'  => $date . ' 13:00:00',
                 'timein_end'    => $date . ' 13:30:00',
                 'timeout_start' => $date . ' 17:00:00',
@@ -254,6 +263,9 @@ class DevSeeder extends Seeder
             EventSession::firstOrCreate(
                 ['event_day_id' => $eventDay->id, 'session_type' => 'parade'],
                 [
+                // Unique per day since the custom-sessions migration — without it every
+                // session defaults to 0 and the second insert violates the key.
+                'sort_order'    => 3,
                     'timein_start'  => $date . ' 06:00:00',
                     'timein_end'    => $date . ' 06:45:00',
                     'timeout_start' => null,

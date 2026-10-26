@@ -828,7 +828,32 @@ table{ max-width: 100%;}
      TOP of the bottom-aligned content block, under only ~15-55% darkening
      — not enough against a bright sky/mountain photo, which is exactly
      what broke in the reported screenshot. */
-  background:linear-gradient(120deg, rgba(19,60,180,.96) 20%, rgba(37,99,235,.82) 100%);
+  /* Fix (Oct 2026) — the scrim above was a near-opaque blue wash over the WHOLE
+     card (.96 / .82), so an uploaded event photo was almost invisible. The text
+     is bottom-aligned, so darken from the bottom up (enough behind the title and
+     description to stay readable on a bright photo) and fade to clear over the
+     top of the card, where the photo should show. */
+  background:linear-gradient(to top,
+    rgba(8,24,64,.94) 0%,
+    rgba(8,24,64,.84) 40%,
+    rgba(8,24,64,.56) 62%,
+    rgba(8,24,64,.18) 82%,
+    rgba(8,24,64,0) 100%);
+}
+/* An event with no photo gets the brand gradient (same as the mobile app)
+   instead of the empty grey placeholder the wash used to hide. */
+.feature-card .feature-bg--plain{
+  background:linear-gradient(135deg,#0B1F4B 0%,#1D4ED8 100%);
+}
+/* The tag is normally primary-blue text for white cards; on the photo card
+   that was blue-on-blue, so it becomes a white pill. */
+.feature-card .dash-tag{
+  align-self:flex-start;
+  color:#FFFFFF;
+  background:rgba(255,255,255,.18);
+  padding:4px 10px;
+  border-radius:999px;
+  text-shadow:0 1px 2px rgba(0,0,0,.35);
 }
 .feature-card .feature-content{
   position:relative;

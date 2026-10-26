@@ -1,12 +1,14 @@
+// lib/screens/student/qr_screen.dart
 import 'dart:async';
-import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_theme.dart';
 import '../../models/qr_data.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/student_providers.dart';
 import '../../widgets/status_views.dart';
 
@@ -61,6 +63,7 @@ class _QrScreenState extends ConsumerState<QrScreen> {
   @override
   Widget build(BuildContext context) {
     final qr = ref.watch(studentQrProvider);
+    final user = ref.watch(authProvider).user;
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(studentQrProvider),
@@ -77,21 +80,45 @@ class _QrScreenState extends ConsumerState<QrScreen> {
         data: (data) {
           _seedTicker(data);
           final seconds = _secondsLeft ?? data.expiresIn.clamp(1, 60);
+          // Turns red for the last 10 seconds, same threshold as before.
+          final urgent = seconds <= 10;
+          final accent = urgent ? AppColors.roseText : AppColors.primary;
 
           return ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              const SizedBox(height: 24),
+              Text(
+                'My attendance QR',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -.2,
+                      color: AppColors.text,
+                    ),
+              ),
+              if (user != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '${user.name} · ${user.studentId}',
+                  textAlign: TextAlign.center,
+                  style:
+                      const TextStyle(fontSize: 13, color: AppColors.textMuted),
+                ),
+              ],
+              const SizedBox(height: 22),
               Center(
                 child: Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                    border: Border.all(color: AppColors.border),
                     boxShadow: [
                       BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 16)
+                        color: AppColors.navy.withValues(alpha: 0.10),
+                        blurRadius: 28,
+                        offset: const Offset(0, 12),
+                      ),
                     ],
                   ),
                   child: QrImageView(
@@ -101,24 +128,39 @@ class _QrScreenState extends ConsumerState<QrScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
+              // Countdown: a thin bar that drains over the 60s window, plus the seconds label.
               Center(
-                child: Text(
-                  '${seconds}s',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                    color: seconds <= 10
-                        ? Theme.of(context).colorScheme.error
-                        : null,
+                child: SizedBox(
+                  width: 240,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: seconds / 60,
+                      minHeight: 6,
+                      backgroundColor: AppColors.primary.withValues(alpha: .12),
+                      valueColor: AlwaysStoppedAnimation(accent),
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Center(
                 child: Text(
-                  'QR code refresh automatically within 60s — just hold steady at the scan station. '
-                  'A screenshot won\'t work."',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  '${seconds}s',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                        color: accent,
+                      ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Center(
+                child: Text(
+                  'Your QR code refreshes automatically every 60 seconds — just hold steady at the scan '
+                  'station. A screenshot won\'t work.',
+                  style: TextStyle(fontSize: 12.5, color: AppColors.textMuted),
                   textAlign: TextAlign.center,
                 ),
               ),

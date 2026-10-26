@@ -22,6 +22,9 @@ class EventAttendance extends Model
         'override_reason',
         'device_scanned_at',
         'synced_from_offline_queue',
+        'reviewed_by',
+        'reviewed_at',
+        'review_decision',
     ];
 
     protected $casts = [
@@ -29,6 +32,7 @@ class EventAttendance extends Model
         'device_scanned_at'          => 'datetime',
         'is_manual_override'         => 'boolean',
         'synced_from_offline_queue'  => 'boolean',
+        'reviewed_at'                => 'datetime',
     ];
 
     public function event(): BelongsTo
@@ -49,6 +53,11 @@ class EventAttendance extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     public function markedBy(): BelongsTo

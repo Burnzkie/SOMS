@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\AnalyticsController;
+use App\Http\Controllers\Admin\AuditFindingController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OfficerAppointmentController;
 use App\Http\Controllers\Admin\PermissionController;
@@ -31,3 +32,8 @@ Route::get('/permissions/{position}', [PermissionController::class, 'edit'])->na
 Route::put('/permissions/{position}', [PermissionController::class, 'update'])->name('admin.permissions.update');
 Route::get('/reports', [ReportController::class, 'index'])->name('admin.reports.index');
 Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('admin.activity-logs.index');
+
+// Audit findings reported by the Auditor -- the Admin acknowledges and resolves them.
+Route::get('/audit-findings', [AuditFindingController::class, 'index'])->name('admin.audit-findings.index');
+Route::get('/audit-findings/{finding}', [AuditFindingController::class, 'show'])->name('admin.audit-findings.show');
+Route::post('/audit-findings/{finding}/respond', [AuditFindingController::class, 'respond'])->name('admin.audit-findings.respond');

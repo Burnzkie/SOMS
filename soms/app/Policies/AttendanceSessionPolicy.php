@@ -39,6 +39,16 @@ class AttendanceSessionPolicy
     }
 
     /**
+     * Review (approve/reject) offline scans flagged for clock drift.
+     * Executive/Administrative officers only -- a delegate can scan but
+     * can't decide on their own flagged scans.
+     */
+    public function review(User $user, EventSession $session): bool
+    {
+        return OfficerPermission::can($user, 'manage_attendance');
+    }
+
+    /**
      * Whether $user is the attendance delegate assigned to this specific session.
      * Delegate access is scoped per-session and revoked immediately on reassignment
      * (no caching of grants) — see 05-Attendance-Fines.md.

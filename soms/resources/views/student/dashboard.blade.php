@@ -48,7 +48,7 @@
   @php($feature = $upcomingEvents->first())
   @if($feature)
   <div class="feature-card">
-    <div class="feature-bg" style="{{ $feature->image_url ? 'background-image:url(\'' . $feature->image_url . '\');' : '' }}"></div>
+    <div class="feature-bg {{ $feature->image_url ? '' : 'feature-bg--plain' }}" style="{{ $feature->image_url ? 'background-image:url(\'' . $feature->image_url . '\');' : '' }}"></div>
     <div class="feature-content">
       <div class="dash-tag">🏷 Upcoming Event</div>
       <h2>{{ $feature->title }}</h2>

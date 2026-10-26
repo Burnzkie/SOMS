@@ -1,6 +1,9 @@
 <?php
+// routes/officer.php
 
 use App\Http\Controllers\Officer\AnnouncementController;
+use App\Http\Controllers\Officer\AuditController;
+use App\Http\Controllers\Officer\AuditFindingController;
 use App\Http\Controllers\Officer\AttendanceController;
 use App\Http\Controllers\Officer\AttendanceDelegateController;
 use App\Http\Controllers\Officer\CalendarController;
@@ -36,12 +39,37 @@ Route::middleware(['throttle:scan'])->group(function () {
     Route::post('/attendance/scan', [AttendanceController::class, 'scan'])->name('officer.attendance.scan');
     Route::post('/attendance/sessions/{session}/close', [AttendanceController::class, 'closeSession'])->name('officer.attendance.close');
     Route::post('/attendance/sessions/{session}/override', [AttendanceController::class, 'manualOverride'])->name('officer.attendance.override');
+    Route::post('/attendance/{attendance}/review', [AttendanceController::class, 'reviewFlagged'])->name('officer.attendance.review');
 });
 
 // Fines -- Treasurer + Admin only, gated by FinePolicy inside the controller.
 Route::get('/fines', [FineController::class, 'index'])->name('officer.fines.index');
 Route::post('/fines/{fine}/clear', [FineController::class, 'clear'])->name('officer.fines.clear');
 Route::post('/fines/{fine}/waive', [FineController::class, 'waive'])->name('officer.fines.waive');
+// Bulk: settle ALL of one student's unpaid fines at once (treasurer convenience).
+Route::post('/fines/student/{student}/clear', [FineController::class, 'clearAll'])->name('officer.fines.clearAll');
+Route::post('/fines/student/{student}/waive', [FineController::class, 'waiveAll'])->name('officer.fines.waiveAll');
+
+// Auditor workspace -- read-only records, discrepancy report, exports and findings.
+// Each page checks its own permission inside the controller (no implicit access).
+Route::prefix('audit')->group(function () {
+    Route::get('/', [AuditController::class, 'dashboard'])->name('officer.audit.dashboard');
+    Route::get('/fines', [AuditController::class, 'fines'])->name('officer.audit.fines');
+    Route::get('/attendance', [AuditController::class, 'attendance'])->name('officer.audit.attendance');
+    Route::get('/discrepancies', [AuditController::class, 'discrepancies'])->name('officer.audit.discrepancies');
+    Route::get('/activity-log', [AuditController::class, 'activityLog'])->name('officer.audit.activity-log');
+    Route::get('/export/fines', [AuditController::class, 'exportFines'])->name('officer.audit.export.fines');
+    Route::get('/export/discrepancies', [AuditController::class, 'exportDiscrepancies'])->name('officer.audit.export.discrepancies');
+
+    Route::get('/findings', [AuditFindingController::class, 'index'])->name('officer.audit.findings.index');
+    Route::get('/findings/create', [AuditFindingController::class, 'create'])->name('officer.audit.findings.create');
+    Route::post('/findings', [AuditFindingController::class, 'store'])->name('officer.audit.findings.store');
+    Route::post('/findings/from-check', [AuditFindingController::class, 'fromCheck'])->name('officer.audit.findings.from-check');
+    Route::get('/findings/{finding}', [AuditFindingController::class, 'show'])->name('officer.audit.findings.show');
+    Route::patch('/findings/{finding}', [AuditFindingController::class, 'update'])->name('officer.audit.findings.update');
+    Route::post('/findings/{finding}/withdraw', [AuditFindingController::class, 'withdraw'])->name('officer.audit.findings.withdraw');
+    Route::post('/findings/{finding}/reopen', [AuditFindingController::class, 'reopen'])->name('officer.audit.findings.reopen');
+});
 
 // Announcements -- draft (all tiers) / publish (Executive only).
 Route::get('/announcements', [AnnouncementController::class, 'index'])->name('officer.announcements.index');

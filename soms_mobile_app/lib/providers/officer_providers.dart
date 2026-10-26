@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/announcement.dart';
 import '../models/event.dart';
 import '../models/fine.dart';
+import '../models/flagged_scan.dart';
 import '../models/paginated.dart';
 import 'auth_provider.dart';
 
@@ -14,6 +15,17 @@ final officerActiveMembersProvider = FutureProvider.autoDispose<int>((ref) async
   final res = await api.get('/officer/dashboard-summary');
   final data = res['data'] as Map<String, dynamic>? ?? {};
   return data['active_members'] as int? ?? 0;
+});
+
+/// The permission keys this officer currently holds, from the same
+/// dashboard-summary endpoint. The login response doesn't carry them, so
+/// this is how the app knows whether to offer the Audit workspace.
+final officerPermissionsProvider = FutureProvider.autoDispose<Set<String>>((ref) async {
+  final api = ref.watch(apiClientProvider);
+  final res = await api.get('/officer/dashboard-summary');
+  final data = res['data'] as Map<String, dynamic>? ?? {};
+  final list = data['permissions'] as List<dynamic>? ?? [];
+  return list.map((e) => '$e').toSet();
 });
 
 final officerEventsProvider = FutureProvider.autoDispose<Paginated<SomsEvent>>((ref) async {
@@ -39,6 +51,17 @@ final sessionDelegatesProvider =
   final res = await api.get('/officer/attendance/sessions/$sessionId/delegates');
   final list = res['data'] as List<dynamic>? ?? [];
   return list.map((e) => SessionDelegate.fromJson(e as Map<String, dynamic>)).toList();
+});
+
+/// GET /api/v1/officer/attendance/sessions/{id}/flagged — offline scans held
+/// for review (device clock drift). manage_attendance officers only; a 403
+/// here just means this officer can't review, handled in the screen.
+final flaggedScansProvider =
+    FutureProvider.autoDispose.family<List<FlaggedScan>, int>((ref, sessionId) async {
+  final api = ref.watch(apiClientProvider);
+  final res = await api.get('/officer/attendance/sessions/$sessionId/flagged');
+  final list = res['data'] as List<dynamic>? ?? [];
+  return list.map((e) => FlaggedScan.fromJson(e as Map<String, dynamic>)).toList();
 });
 
 final officerCalendarProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {

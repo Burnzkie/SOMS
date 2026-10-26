@@ -7,6 +7,7 @@ import '../../models/event.dart';
 import '../../models/queued_scan.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/scan_providers.dart';
+import 'flagged_scans_screen.dart';
 
 /// Officer camera-based attendance scan for one session. Mirrors the web
 /// scan flow (officer/attendance/scan.blade.php) but adds the offline
@@ -149,6 +150,11 @@ class _OfficerScanScreenState extends ConsumerState<OfficerScanScreen> {
             ),
             onPressed: () => _controller.toggleTorch(),
             tooltip: 'Toggle flashlight',
+          ),
+          IconButton(
+            icon: const Icon(Icons.flag_outlined),
+            onPressed: _openFlaggedScans,
+            tooltip: 'Flagged scans',
           ),
           IconButton(
             icon: const Icon(Icons.edit_note_outlined),
@@ -348,10 +354,25 @@ class _OfficerScanScreenState extends ConsumerState<OfficerScanScreen> {
 
     final failed = outcomes.where((o) => !o.success).length;
     final synced = outcomes.length - failed;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(
-        synced > 0 ? 'Synced $synced queued scan(s).' : 'Still offline — will retry automatically.',
-      )),
+    // Scans synced from a device with a drifted clock are held for review,
+    // not counted present — tell the officer so they know to check the list.
+    final flagged = outcomes.where((o) => o.status == 'flagged_for_review').length;
+    final flaggedNote = flagged > 0 ? ' $flagged flagged for review.' : '';
+    final message = synced > 0
+        ? 'Synced $synced queued scan(s).$flaggedNote'
+        : 'Still offline — will retry automatically.';
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Opens the review queue for offline scans flagged for clock drift.
+  void _openFlaggedScans() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FlaggedScansScreen(
+          sessionId: widget.session.id,
+          eventTitle: widget.eventTitle,
+        ),
+      ),
     );
   }
 

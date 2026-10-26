@@ -77,7 +77,7 @@
 <div class="dash-row">
   @if($upcomingEvent)
   <div class="feature-card">
-    <div class="feature-bg" style="{{ $upcomingEvent->image_url ? 'background-image:url(\'' . $upcomingEvent->image_url . '\');' : '' }}"></div>
+    <div class="feature-bg {{ $upcomingEvent->image_url ? '' : 'feature-bg--plain' }}" style="{{ $upcomingEvent->image_url ? 'background-image:url(\'' . $upcomingEvent->image_url . '\');' : '' }}"></div>
     <div class="feature-content">
       <div class="dash-tag">🏷 Upcoming Event</div>
       <h2>{{ $upcomingEvent->title }}</h2>

@@ -46,6 +46,7 @@ class PermissionController extends Controller
         return view('admin.permissions.edit', [
             'position'             => $position->load('user'),
             'availablePermissions' => OfficerPermission::PERMISSIONS,
+            'recommended'          => OfficerPermission::presetFor($position->position_title),
         ]);
     }
 

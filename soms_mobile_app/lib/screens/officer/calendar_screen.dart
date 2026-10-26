@@ -1,3 +1,4 @@
+// calendar_screen.dart
 import 'dart:io';
 
 import 'package:dio/dio.dart' show FormData, MultipartFile;
@@ -9,6 +10,7 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../core/api_client.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/officer_providers.dart';
+import '../../widgets/program_picker.dart';
 import '../../widgets/status_views.dart';
 import 'events_screen.dart' show OfficerEventDetailScreen;
 
@@ -97,126 +99,146 @@ class _OfficerCalendarScreenState extends ConsumerState<OfficerCalendarScreen> {
             label: const Text('New event'),
           ),
           body: RefreshIndicator(
-          onRefresh: () async => ref.invalidate(officerCalendarProvider),
-          child: ListView(
-            children: [
-              TableCalendar(
-                firstDay: DateTime.utc(2020, 1, 1),
-                lastDay: DateTime.utc(2035, 12, 31),
-                focusedDay: _focusedDay,
-                selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                eventLoader: (day) => eventsByDay[_dateKey(day)] ?? const [],
-                onDaySelected: (selectedDay, focusedDay) {
-                  setState(() {
-                    _selectedDay = selectedDay;
-                    _focusedDay = focusedDay;
-                  });
-                },
-                onPageChanged: (focusedDay) => _focusedDay = focusedDay,
-                calendarStyle: const CalendarStyle(markersMaxCount: 4),
-                // Drag-to-reschedule (manage_events officers only —
-                // enforced server-side by
-                // Api\Officer\EventController::reschedule, same guard as
-                // the events list's date-picker version, so a
-                // lower-permission officer sees a rejected-drop message
-                // rather than the app trusting a client-side check).
-                //
-                // TableCalendar renders "today," "the selected day," and
-                // "an adjacent-month day" through separate builder slots
-                // from ordinary days — wiring only defaultBuilder would
-                // silently leave those specific days non-droppable, which
-                // is exactly where someone would often want to drop an
-                // event (e.g. rescheduling something onto today). All
-                // four share the one _dragTargetDayCell helper below.
-                calendarBuilders: CalendarBuilders(
-                  defaultBuilder: (context, day, focusedDay) => _dragTargetDayCell(context, day, isToday: false, isSelected: false),
-                  todayBuilder: (context, day, focusedDay) => _dragTargetDayCell(context, day, isToday: true, isSelected: false),
-                  selectedBuilder: (context, day, focusedDay) => _dragTargetDayCell(context, day, isToday: false, isSelected: true),
-                  outsideBuilder: (context, day, focusedDay) => _dragTargetDayCell(context, day, isToday: false, isSelected: false, muted: true),
-                ),
-              ),
-              const Divider(height: 1),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: Row(
-                  children: [
-                    _LegendDot(color: Color(0xFFFF7A29)),
-                    SizedBox(width: 6),
-                    Text('SOMS Events', style: TextStyle(fontSize: 12)),
-                  ],
-                ),
-              ),
-              if (dayItems.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: Text('Nothing on this day.')),
-                )
-              else
-                for (final item in dayItems)
-                  LongPressDraggable<Map<String, dynamic>>(
-                    data: item,
-                    // Long-press, not a plain Draggable — a bare Draggable
-                    // would hijack the ListView's own vertical scroll
-                    // gesture on this list, and would fire on the same
-                    // touch as the tap-to-open-detail below. Long-press
-                    // cleanly separates "scroll/tap" from "pick this up."
-                    feedback: Material(
-                      elevation: 4,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        constraints: const BoxConstraints(maxWidth: 220),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.circle, size: 12, color: _parseColor(item['color'] as String?)),
-                            const SizedBox(width: 8),
-                            Flexible(child: Text(item['title'] as String? ?? '', overflow: TextOverflow.ellipsis)),
-                          ],
-                        ),
-                      ),
-                    ),
-                    childWhenDragging: Opacity(
-                      opacity: 0.35,
-                      child: ListTile(
-                        leading: Icon(Icons.circle, size: 12, color: _parseColor(item['color'] as String?)),
-                        title: Text(item['title'] as String? ?? ''),
-                      ),
-                    ),
-                    child: ListTile(
-                      leading: Icon(Icons.circle,
-                          size: 12, color: _parseColor(item['color'] as String?)),
-                      title: Text(item['title'] as String? ?? ''),
-                      subtitle: const Text('Hold and drag to reschedule', style: TextStyle(fontSize: 11)),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        final id = item['id'] as String?;
-                        final eventId = id != null && id.startsWith('event-')
-                            ? int.tryParse(id.substring('event-'.length))
-                            : null;
-                        if (eventId == null) return;
-                        Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => OfficerEventDetailScreen(
-                            eventId: eventId,
-                            title: item['title'] as String? ?? '',
-                          ),
-                        ));
-                      },
-                    ),
+            onRefresh: () async => ref.invalidate(officerCalendarProvider),
+            child: ListView(
+              children: [
+                TableCalendar(
+                  firstDay: DateTime.utc(2020, 1, 1),
+                  lastDay: DateTime.utc(2035, 12, 31),
+                  focusedDay: _focusedDay,
+                  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                  eventLoader: (day) => eventsByDay[_dateKey(day)] ?? const [],
+                  onDaySelected: (selectedDay, focusedDay) {
+                    setState(() {
+                      _selectedDay = selectedDay;
+                      _focusedDay = focusedDay;
+                    });
+                  },
+                  onPageChanged: (focusedDay) => _focusedDay = focusedDay,
+                  calendarStyle: const CalendarStyle(markersMaxCount: 4),
+                  // Drag-to-reschedule (manage_events officers only —
+                  // enforced server-side by
+                  // Api\Officer\EventController::reschedule, same guard as
+                  // the events list's date-picker version, so a
+                  // lower-permission officer sees a rejected-drop message
+                  // rather than the app trusting a client-side check).
+                  //
+                  // TableCalendar renders "today," "the selected day," and
+                  // "an adjacent-month day" through separate builder slots
+                  // from ordinary days — wiring only defaultBuilder would
+                  // silently leave those specific days non-droppable, which
+                  // is exactly where someone would often want to drop an
+                  // event (e.g. rescheduling something onto today). All
+                  // four share the one _dragTargetDayCell helper below.
+                  calendarBuilders: CalendarBuilders(
+                    defaultBuilder: (context, day, focusedDay) =>
+                        _dragTargetDayCell(context, day,
+                            isToday: false, isSelected: false),
+                    todayBuilder: (context, day, focusedDay) =>
+                        _dragTargetDayCell(context, day,
+                            isToday: true, isSelected: false),
+                    selectedBuilder: (context, day, focusedDay) =>
+                        _dragTargetDayCell(context, day,
+                            isToday: false, isSelected: true),
+                    outsideBuilder: (context, day, focusedDay) =>
+                        _dragTargetDayCell(context, day,
+                            isToday: false, isSelected: false, muted: true),
                   ),
-            ],
-          ),
+                ),
+                const Divider(height: 1),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: Row(
+                    children: [
+                      _LegendDot(color: Color(0xFFFF7A29)),
+                      SizedBox(width: 6),
+                      Text('SOMS Events', style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ),
+                if (dayItems.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: Text('Nothing on this day.')),
+                  )
+                else
+                  for (final item in dayItems)
+                    LongPressDraggable<Map<String, dynamic>>(
+                      data: item,
+                      // Long-press, not a plain Draggable — a bare Draggable
+                      // would hijack the ListView's own vertical scroll
+                      // gesture on this list, and would fire on the same
+                      // touch as the tap-to-open-detail below. Long-press
+                      // cleanly separates "scroll/tap" from "pick this up."
+                      feedback: Material(
+                        elevation: 4,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          constraints: const BoxConstraints(maxWidth: 220),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHigh,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.circle,
+                                  size: 12,
+                                  color: _parseColor(item['color'] as String?)),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                  child: Text(item['title'] as String? ?? '',
+                                      overflow: TextOverflow.ellipsis)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      childWhenDragging: Opacity(
+                        opacity: 0.35,
+                        child: ListTile(
+                          leading: Icon(Icons.circle,
+                              size: 12,
+                              color: _parseColor(item['color'] as String?)),
+                          title: Text(item['title'] as String? ?? ''),
+                        ),
+                      ),
+                      child: ListTile(
+                        leading: Icon(Icons.circle,
+                            size: 12,
+                            color: _parseColor(item['color'] as String?)),
+                        title: Text(item['title'] as String? ?? ''),
+                        subtitle: const Text('Hold and drag to reschedule',
+                            style: TextStyle(fontSize: 11)),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          final id = item['id'] as String?;
+                          final eventId = id != null && id.startsWith('event-')
+                              ? int.tryParse(id.substring('event-'.length))
+                              : null;
+                          if (eventId == null) return;
+                          Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => OfficerEventDetailScreen(
+                              eventId: eventId,
+                              title: item['title'] as String? ?? '',
+                            ),
+                          ));
+                        },
+                      ),
+                    ),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  Future<void> _openQuickCreate(BuildContext context, WidgetRef ref, DateTime day) async {
+  Future<void> _openQuickCreate(
+      BuildContext context, WidgetRef ref, DateTime day) async {
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -277,15 +299,18 @@ class _OfficerCalendarScreenState extends ConsumerState<OfficerCalendarScreen> {
       onWillAcceptWithDetails: (details) {
         // Reject a drop back onto the day an event is already on — avoids
         // a pointless API call + activity log entry for a no-op move.
-        final currentStart = DateTime.tryParse(details.data['start'] as String? ?? '');
+        final currentStart =
+            DateTime.tryParse(details.data['start'] as String? ?? '');
         return currentStart == null || !isSameDay(currentStart, day);
       },
-      onAcceptWithDetails: (details) => _rescheduleViaDrag(context, ref, details.data, day),
+      onAcceptWithDetails: (details) =>
+          _rescheduleViaDrag(context, ref, details.data, day),
       builder: (context, candidateData, rejectedData) {
         final isDropTarget = candidateData.isNotEmpty;
 
         BoxDecoration? decoration;
-        Color textColor = muted ? scheme.onSurface.withValues(alpha: 0.38) : scheme.onSurface;
+        Color textColor =
+            muted ? scheme.onSurface.withValues(alpha: 0.38) : scheme.onSurface;
 
         if (isDropTarget) {
           decoration = BoxDecoration(
@@ -295,10 +320,13 @@ class _OfficerCalendarScreenState extends ConsumerState<OfficerCalendarScreen> {
           );
           textColor = scheme.onPrimaryContainer;
         } else if (isSelected) {
-          decoration = BoxDecoration(color: scheme.primary, shape: BoxShape.circle);
+          decoration =
+              BoxDecoration(color: scheme.primary, shape: BoxShape.circle);
           textColor = scheme.onPrimary;
         } else if (isToday) {
-          decoration = BoxDecoration(shape: BoxShape.circle, border: Border.all(color: scheme.primary, width: 1.5));
+          decoration = BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: scheme.primary, width: 1.5));
           textColor = scheme.primary;
         }
 
@@ -325,17 +353,22 @@ class _OfficerCalendarScreenState extends ConsumerState<OfficerCalendarScreen> {
     DateTime newDay,
   ) async {
     final id = item['id'] as String?;
-    final eventId = id != null && id.startsWith('event-') ? int.tryParse(id.substring('event-'.length)) : null;
+    final eventId = id != null && id.startsWith('event-')
+        ? int.tryParse(id.substring('event-'.length))
+        : null;
     if (eventId == null) return;
 
     final api = ref.read(apiClientProvider);
     try {
-      await api.patch('/officer/events/$eventId/reschedule', data: {'date_start': _dateKey(newDay)});
+      await api.patch('/officer/events/$eventId/reschedule',
+          data: {'date_start': _dateKey(newDay)});
       ref.invalidate(officerCalendarProvider);
       ref.invalidate(officerEventsProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('"${item['title']}" moved to ${_dateKey(newDay)}.')),
+          SnackBar(
+              content:
+                  Text('"${item['title']}" moved to ${_dateKey(newDay)}.')),
         );
       }
     } on ApiException catch (e) {
@@ -344,7 +377,8 @@ class _OfficerCalendarScreenState extends ConsumerState<OfficerCalendarScreen> {
       // recorded attendance" guard, same messages the date-picker path
       // already surfaces.
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
       }
     }
   }
@@ -370,10 +404,12 @@ class _QuickCreateEventSheet extends ConsumerStatefulWidget {
   final DateTime initialDate;
 
   @override
-  ConsumerState<_QuickCreateEventSheet> createState() => _QuickCreateEventSheetState();
+  ConsumerState<_QuickCreateEventSheet> createState() =>
+      _QuickCreateEventSheetState();
 }
 
-class _QuickCreateEventSheetState extends ConsumerState<_QuickCreateEventSheet> {
+class _QuickCreateEventSheetState
+    extends ConsumerState<_QuickCreateEventSheet> {
   late DateTime _startDate = widget.initialDate;
   String _type = 'other';
   String? _activity;
@@ -382,6 +418,10 @@ class _QuickCreateEventSheetState extends ConsumerState<_QuickCreateEventSheet> 
   bool _submitting = false;
   XFile? _pickedImage;
   Color _selectedColor = kEventColorPresets.first;
+
+  // Programs required to attend. Empty = EVERY program (the backend default),
+  // which is what the confirmation in _submit() warns about.
+  Set<String> _targetPrograms = {};
 
   final _titleController = TextEditingController();
   final _venueController = TextEditingController();
@@ -427,6 +467,10 @@ class _QuickCreateEventSheetState extends ConsumerState<_QuickCreateEventSheet> 
       return;
     }
 
+    if (_targetPrograms.isEmpty && !await confirmAllProgramsRequired(context))
+      return;
+    if (!mounted) return;
+
     setState(() => _submitting = true);
     final api = ref.read(apiClientProvider);
     try {
@@ -439,16 +483,22 @@ class _QuickCreateEventSheetState extends ConsumerState<_QuickCreateEventSheet> 
         'date_end': _fmt(_endDate),
         'has_parade': _hasParade,
         'color': colorToHex(_selectedColor),
+        // Always sent so the backend can tell "nothing ticked" apart from "field missing".
+        'target_programs_submitted': '1',
+        for (final (i, program) in (_targetPrograms.toList()..sort()).indexed)
+          'target_programs[$i]': program,
         if (descriptionText.isNotEmpty) 'description': descriptionText,
         if (venueText.isNotEmpty) 'venue': venueText,
-        if (_pickedImage != null) 'image': await MultipartFile.fromFile(_pickedImage!.path),
+        if (_pickedImage != null)
+          'image': await MultipartFile.fromFile(_pickedImage!.path),
       });
       await api.postMultipart('/officer/events', formData);
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _submitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
       }
     }
   }
@@ -477,26 +527,43 @@ class _QuickCreateEventSheetState extends ConsumerState<_QuickCreateEventSheet> 
                 margin: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                  border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest
+                      .withValues(alpha: 0.4),
                   image: _pickedImage != null
-                      ? DecorationImage(image: FileImage(File(_pickedImage!.path)), fit: BoxFit.cover)
+                      ? DecorationImage(
+                          image: FileImage(File(_pickedImage!.path)),
+                          fit: BoxFit.cover)
                       : null,
                 ),
                 child: _pickedImage == null
                     ? Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.add_photo_alternate_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                          Icon(Icons.add_photo_alternate_outlined,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant),
                           const SizedBox(height: 4),
                           Text('Add a cover photo (optional)',
-                              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant)),
                         ],
                       )
                     : Align(
                         alignment: Alignment.topRight,
                         child: IconButton(
-                          icon: const CircleAvatar(radius: 12, backgroundColor: Colors.black54, child: Icon(Icons.close, size: 14, color: Colors.white)),
+                          icon: const CircleAvatar(
+                              radius: 12,
+                              backgroundColor: Colors.black54,
+                              child: Icon(Icons.close,
+                                  size: 14, color: Colors.white)),
                           onPressed: () => setState(() => _pickedImage = null),
                         ),
                       ),
@@ -518,7 +585,8 @@ class _QuickCreateEventSheetState extends ConsumerState<_QuickCreateEventSheet> 
               ),
             ),
             const SizedBox(height: 12),
-            Text('Calendar color', style: Theme.of(context).textTheme.bodySmall),
+            Text('Calendar color',
+                style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 6),
             Row(
               children: kEventColorPresets.map((c) {
@@ -533,8 +601,16 @@ class _QuickCreateEventSheetState extends ConsumerState<_QuickCreateEventSheet> 
                       decoration: BoxDecoration(
                         color: c,
                         shape: BoxShape.circle,
-                        border: selected ? Border.all(color: Colors.white, width: 2.5) : null,
-                        boxShadow: selected ? [BoxShadow(color: c.withValues(alpha: 0.6), blurRadius: 6)] : null,
+                        border: selected
+                            ? Border.all(color: Colors.white, width: 2.5)
+                            : null,
+                        boxShadow: selected
+                            ? [
+                                BoxShadow(
+                                    color: c.withValues(alpha: 0.6),
+                                    blurRadius: 6)
+                              ]
+                            : null,
                       ),
                     ),
                   ),
@@ -543,13 +619,14 @@ class _QuickCreateEventSheetState extends ConsumerState<_QuickCreateEventSheet> 
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _type,
+              initialValue: _type,
               decoration: const InputDecoration(labelText: 'Event type'),
               isExpanded: true,
               items: kEventTypePresets.entries
                   .map((e) => DropdownMenuItem(
                         value: e.key,
-                        child: Text('${e.value.emoji} ${e.value.label}', overflow: TextOverflow.ellipsis),
+                        child: Text('${e.value.emoji} ${e.value.label}',
+                            overflow: TextOverflow.ellipsis),
                       ))
                   .toList(),
               onChanged: (value) {
@@ -557,7 +634,9 @@ class _QuickCreateEventSheetState extends ConsumerState<_QuickCreateEventSheet> 
                 setState(() {
                   _type = value;
                   if (value != 'foundation_day') _activity = null;
-                  if (_titleController.text.trim().isEmpty && value != 'other' && value != 'foundation_day') {
+                  if (_titleController.text.trim().isEmpty &&
+                      value != 'other' &&
+                      value != 'foundation_day') {
                     _titleController.text = kEventTypePresets[value]!.label;
                   }
                 });
@@ -566,8 +645,9 @@ class _QuickCreateEventSheetState extends ConsumerState<_QuickCreateEventSheet> 
             if (_type == 'foundation_day') ...[
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _activity,
-                decoration: const InputDecoration(labelText: 'Foundation Day activity (optional)'),
+                initialValue: _activity,
+                decoration: const InputDecoration(
+                    labelText: 'Foundation Day activity (optional)'),
                 isExpanded: true,
                 items: kFoundationDayActivities
                     .map((a) => DropdownMenuItem(value: a, child: Text(a)))
@@ -575,13 +655,16 @@ class _QuickCreateEventSheetState extends ConsumerState<_QuickCreateEventSheet> 
                 onChanged: (value) {
                   setState(() {
                     _activity = value;
-                    if (value != null) _titleController.text = 'Foundation Day — $value';
+                    if (value != null)
+                      _titleController.text = 'Foundation Day — $value';
                   });
                 },
               ),
             ],
             const SizedBox(height: 12),
-            TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title')),
+            TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(labelText: 'Title')),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -590,29 +673,41 @@ class _QuickCreateEventSheetState extends ConsumerState<_QuickCreateEventSheet> 
                     initialValue: '1',
                     decoration: const InputDecoration(labelText: 'Days'),
                     keyboardType: TextInputType.number,
-                    onChanged: (v) => setState(() => _days = int.tryParse(v)?.clamp(1, 30) ?? 1),
+                    onChanged: (v) => setState(
+                        () => _days = int.tryParse(v)?.clamp(1, 30) ?? 1),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   flex: 2,
-                  child: TextField(controller: _venueController, decoration: const InputDecoration(labelText: 'Venue')),
+                  child: TextField(
+                      controller: _venueController,
+                      decoration: const InputDecoration(labelText: 'Venue')),
                 ),
               ],
             ),
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                _days == 1 ? 'Single day: ${_fmt(_startDate)}' : 'Runs ${_fmt(_startDate)} through ${_fmt(_endDate)} ($_days days)',
+                _days == 1
+                    ? 'Single day: ${_fmt(_startDate)}'
+                    : 'Runs ${_fmt(_startDate)} through ${_fmt(_endDate)} ($_days days)',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _descriptionController,
-              decoration: const InputDecoration(labelText: 'Description (optional)'),
+              decoration:
+                  const InputDecoration(labelText: 'Description (optional)'),
               minLines: 2,
               maxLines: 4,
+            ),
+            const SizedBox(height: 8),
+            ProgramPicker(
+              selected: _targetPrograms,
+              onChanged: (programs) =>
+                  setState(() => _targetPrograms = programs),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
@@ -625,7 +720,10 @@ class _QuickCreateEventSheetState extends ConsumerState<_QuickCreateEventSheet> 
             FilledButton(
               onPressed: _submitting ? null : _submit,
               child: _submitting
-                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
                   : const Text('Create event'),
             ),
           ],

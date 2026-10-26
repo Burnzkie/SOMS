@@ -2,9 +2,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/app_theme.dart';
 import '../../providers/admin_providers.dart';
 import '../../providers/auth_provider.dart';
-import '../../widgets/status_views.dart';
+import '../../widgets/tile_grid.dart';
+import 'admin_findings_screen.dart';
 import 'logs_screen.dart';
 import 'officer_appointment_screen.dart';
 import 'reports_screen.dart';
@@ -14,7 +16,8 @@ import 'users_screen.dart';
 /// (the web Admin\DashboardController's stats aren't exposed to mobile),
 /// so this composes the same figures from the list endpoints the
 /// Users/Officers/Logs tabs already call, same approach as the officer
-/// dashboard tab.
+/// dashboard tab. Styled to match the web admin dashboard and the SOMS
+/// mobile mockup (same tiles/sections as the officer dashboard).
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
 
@@ -29,8 +32,10 @@ class AdminDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider).user;
     final firstName = (user?.name ?? '').split(' ').first;
-    final approvedAsync = ref.watch(adminUsersProvider((status: 'approved', search: null)));
-    final pendingAsync = ref.watch(adminUsersProvider((status: 'pending', search: null)));
+    final approvedAsync =
+        ref.watch(adminUsersProvider((status: 'approved', search: null)));
+    final pendingAsync =
+        ref.watch(adminUsersProvider((status: 'pending', search: null)));
     final officersAsync = ref.watch(officerAppointmentPanelProvider);
     final healthAsync = ref.watch(systemHealthProvider);
 
@@ -39,127 +44,208 @@ class AdminDashboardScreen extends ConsumerWidget {
         ref.invalidate(adminUsersProvider);
         ref.invalidate(officerAppointmentPanelProvider);
         ref.invalidate(systemHealthProvider);
+        ref.invalidate(adminFindingsProvider);
       },
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('Good ${_greeting()}, ${firstName.isEmpty ? 'Admin' : firstName} 👋',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+          Text(
+            'Good ${_greeting()}, ${firstName.isEmpty ? 'Admin' : firstName}!',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -.3,
+                  color: AppColors.text,
+                ),
+          ),
           const SizedBox(height: 4),
-          Text("Here's the state of your organization today.",
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          const Text(
+            "Here's the state of your organization today.",
+            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+          ),
           const SizedBox(height: 18),
 
           healthAsync.when(
             data: (health) => Column(
               children: [
                 if (!health.treasurerActive)
-                  const _WarnBanner('No active Treasurer — Admin is the fallback for clearing/waiving fines.'),
+                  const _WarnBanner(
+                      'No active Treasurer — Admin is the fallback for clearing/waiving fines.'),
                 if (!health.logChainOk)
-                  const _WarnBanner('Activity log chain integrity check failed — review immediately.', danger: true),
+                  const _WarnBanner(
+                      'Activity log chain integrity check failed — review immediately.',
+                      danger: true),
                 if (health.queueStale)
-                  const _WarnBanner('Fine-issuance queue worker hasn\'t reported in over 2 hours.'),
+                  const _WarnBanner(
+                      'Fine-issuance queue worker hasn\'t reported in over 2 hours.'),
               ],
             ),
             loading: () => const SizedBox.shrink(),
             error: (_, __) => const SizedBox.shrink(),
           ),
 
-          // --- Stat grid ---------------------------------------------------
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 1.35,
+          // --- Stat grid (2x2, same four tiles as the web dashboard) -------
+          TileGrid(
+            columns: 2,
             children: [
               approvedAsync.when(
                 data: (p) => _StatTile(
                   icon: Icons.people_outline,
-                  color: const Color(0xFF8B7CF6),
+                  color: AppColors.purple,
                   value: '${p.total}',
                   label: 'Approved Students',
                 ),
-                loading: () => const _StatTile.loading(icon: Icons.people_outline),
-                error: (_, __) => const _StatTile(icon: Icons.people_outline, color: Colors.grey, value: '—', label: 'Approved Students'),
+                loading: () =>
+                    const _StatTile.loading(icon: Icons.people_outline),
+                error: (_, __) => const _StatTile(
+                    icon: Icons.people_outline,
+                    color: Colors.grey,
+                    value: '—',
+                    label: 'Approved Students'),
               ),
               officersAsync.when(
                 data: (r) => _StatTile(
                   icon: Icons.badge_outlined,
-                  color: const Color(0xFF1FC98D),
+                  color: AppColors.emerald,
                   value: '${r.$1.where((row) => !row.vacant).length}',
                   label: 'Active Officers',
                 ),
-                loading: () => const _StatTile.loading(icon: Icons.badge_outlined),
-                error: (_, __) => const _StatTile(icon: Icons.badge_outlined, color: Colors.grey, value: '—', label: 'Active Officers'),
+                loading: () =>
+                    const _StatTile.loading(icon: Icons.badge_outlined),
+                error: (_, __) => const _StatTile(
+                    icon: Icons.badge_outlined,
+                    color: Colors.grey,
+                    value: '—',
+                    label: 'Active Officers'),
               ),
               pendingAsync.when(
                 data: (p) => _StatTile(
                   icon: Icons.hourglass_empty,
-                  color: const Color(0xFFF5A623),
+                  color: AppColors.amber,
                   value: '${p.total}',
                   label: 'Pending Approvals',
                 ),
-                loading: () => const _StatTile.loading(icon: Icons.hourglass_empty),
-                error: (_, __) => const _StatTile(icon: Icons.hourglass_empty, color: Colors.grey, value: '—', label: 'Pending Approvals'),
+                loading: () =>
+                    const _StatTile.loading(icon: Icons.hourglass_empty),
+                error: (_, __) => const _StatTile(
+                    icon: Icons.hourglass_empty,
+                    color: Colors.grey,
+                    value: '—',
+                    label: 'Pending Approvals'),
               ),
               healthAsync.when(
                 data: (health) => _StatTile(
-                  icon: health.logChainOk ? Icons.verified_outlined : Icons.error_outline,
-                  color: health.logChainOk ? Theme.of(context).colorScheme.primary : const Color(0xFFF5497A),
+                  icon: health.logChainOk
+                      ? Icons.verified_outlined
+                      : Icons.error_outline,
+                  color: health.logChainOk ? AppColors.primary : AppColors.rose,
                   value: health.logChainOk ? 'OK' : 'Issue',
                   label: 'System Health',
                 ),
-                loading: () => _StatTile.loading(icon: Icons.verified_outlined),
-                error: (_, __) => const _StatTile(icon: Icons.error_outline, color: Colors.grey, value: '—', label: 'System Health'),
+                loading: () =>
+                    const _StatTile.loading(icon: Icons.verified_outlined),
+                error: (_, __) => const _StatTile(
+                    icon: Icons.error_outline,
+                    color: Colors.grey,
+                    value: '—',
+                    label: 'System Health'),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
 
-          // --- Quick access -------------------------------------------------
-          Text('Quick Access', style: Theme.of(context).textTheme.titleMedium),
+          // --- Quick actions (icon-over-label row, like the mockup) --------
+          Text(
+            'Quick Actions',
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w800, color: AppColors.text),
+          ),
           const SizedBox(height: 10),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 2.6,
+          TileGrid(
+            columns: 4,
             children: [
-              _QuickAccessCard(
+              _QuickActionTile(
                 icon: Icons.people_outline,
-                color: const Color(0xFF8B7CF6),
-                title: 'Users',
-                subtitle: 'Approve & manage users',
-                builder: (_) => const _TabPage(title: 'Users', child: AdminUsersScreen()),
+                color: AppColors.purple,
+                label: 'Users',
+                builder: (_) =>
+                    const _TabPage(title: 'Users', child: AdminUsersScreen()),
               ),
-              _QuickAccessCard(
+              _QuickActionTile(
                 icon: Icons.badge_outlined,
-                color: const Color(0xFF1FC98D),
-                title: 'Officers',
-                subtitle: 'Appoint & revoke positions',
-                builder: (_) => const _TabPage(title: 'Officers', child: OfficerAppointmentScreen()),
+                color: AppColors.emerald,
+                label: 'Officers',
+                builder: (_) => const _TabPage(
+                    title: 'Officers', child: OfficerAppointmentScreen()),
               ),
-              _QuickAccessCard(
+              _QuickActionTile(
                 icon: Icons.picture_as_pdf_outlined,
-                color: const Color(0xFFF5A623),
-                title: 'Reports',
-                subtitle: 'Fine collection reports',
-                builder: (_) => const _TabPage(title: 'Reports', child: AdminReportsScreen()),
+                color: AppColors.amber,
+                label: 'Reports',
+                builder: (_) => const _TabPage(
+                    title: 'Reports', child: AdminReportsScreen()),
               ),
-              _QuickAccessCard(
+              _QuickActionTile(
                 icon: Icons.receipt_long_outlined,
-                color: const Color(0xFFF5497A),
-                title: 'Logs',
-                subtitle: 'Activity log & chain integrity',
-                builder: (_) => const _TabPage(title: 'Logs', child: AdminLogsScreen()),
+                color: AppColors.rose,
+                label: 'Logs',
+                builder: (_) =>
+                    const _TabPage(title: 'Logs', child: AdminLogsScreen()),
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          const _AuditFindingsCard(),
         ],
+      ),
+    );
+  }
+}
+
+/// Entry to the Auditor's findings, with how many still need the Admin.
+class _AuditFindingsCard extends ConsumerWidget {
+  const _AuditFindingsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final waiting = ref
+        .watch(adminFindingsProvider((status: '', page: 1)))
+        .maybeWhen(data: (result) => result.$2, orElse: () => null);
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AdminFindingsScreen()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              const Icon(Icons.fact_check_outlined, color: AppColors.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Audit findings', style: TextStyle(fontWeight: FontWeight.w700)),
+                    Text(
+                      waiting == null
+                          ? 'Review what the Auditor reported'
+                          : waiting == 0
+                              ? 'Nothing waiting for action'
+                              : '$waiting waiting for action',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: AppColors.textFaint),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -189,25 +275,32 @@ class _WarnBannerState extends State<_WarnBanner> {
   Widget build(BuildContext context) {
     if (_dismissed) return const SizedBox.shrink();
 
-    final color = widget.danger ? const Color(0xFFF5497A) : const Color(0xFFF5A623);
+    final color = widget.danger ? AppColors.rose : AppColors.amber;
     // Accessibility fix (Sep 2026) — `color` above, used for the actual
     // warning text, measured 1.84-2.89:1 on its own tinted background --
     // under WCAG AA's 4.5:1 (same category of bug fixed elsewhere in this
     // app). Darker same-hue variant for the text only; the icons keep the
     // original, brighter color since they're decorative next to text that
     // already states the warning.
-    final textColor = widget.danger ? const Color(0xFFCD0B42) : const Color(0xFF976107);
+    final textColor =
+        widget.danger ? const Color(0xFFCD0B42) : const Color(0xFF976107);
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: color.withValues(alpha: 0.30)),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.warning_amber_rounded, size: 16, color: color),
           const SizedBox(width: 8),
-          Expanded(child: Text(widget.text, style: TextStyle(fontSize: 12.5, color: textColor))),
+          Expanded(
+              child: Text(widget.text,
+                  style: TextStyle(fontSize: 12.5, color: textColor))),
           const SizedBox(width: 4),
           InkWell(
             onTap: () => setState(() => _dismissed = true),
@@ -224,7 +317,11 @@ class _WarnBannerState extends State<_WarnBanner> {
 }
 
 class _StatTile extends StatelessWidget {
-  const _StatTile({required this.icon, required this.color, required this.value, required this.label});
+  const _StatTile(
+      {required this.icon,
+      required this.color,
+      required this.value,
+      required this.label});
   const _StatTile.loading({required this.icon})
       : color = Colors.grey,
         value = '—',
@@ -238,21 +335,46 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(14),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(8)),
-              child: Icon(icon, size: 14, color: color),
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10)),
+              child: Icon(icon, size: 18, color: color),
             ),
-            const SizedBox(height: 6),
-            Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text(label, style: Theme.of(context).textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      height: 1.1,
+                      color: AppColors.text),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style:
+                      const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -260,47 +382,49 @@ class _StatTile extends StatelessWidget {
   }
 }
 
-class _QuickAccessCard extends StatelessWidget {
-  const _QuickAccessCard({
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.subtitle,
-    required this.builder,
-  });
+/// Icon-over-label shortcut, like the "Quick Actions" row in the mockup.
+class _QuickActionTile extends StatelessWidget {
+  const _QuickActionTile(
+      {required this.icon,
+      required this.color,
+      required this.label,
+      required this.builder});
 
   final IconData icon;
   final Color color;
-  final String title;
-  final String subtitle;
+  final String label;
   final WidgetBuilder builder;
 
   @override
   Widget build(BuildContext context) {
     return Card(
+      margin: EdgeInsets.zero,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: builder)),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        onTap: () =>
+            Navigator.of(context).push(MaterialPageRoute(builder: builder)),
         child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(9)),
-                child: Icon(icon, size: 17, color: color),
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12)),
+                child: Icon(icon, size: 21, color: color),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text(subtitle, style: const TextStyle(fontSize: 10.5), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ],
-                ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11.5,
+                    color: AppColors.text),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

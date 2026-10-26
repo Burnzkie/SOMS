@@ -171,7 +171,33 @@ class OfficerAppointmentScreen extends ConsumerWidget {
                       }
                     }),
                   )),
-              const SizedBox(height: 12),
+              // Ticks the boxes recommended for this position. Nothing is saved until Save.
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: submitting
+                      ? null
+                      : () async {
+                          try {
+                            final presets = await ref.read(permissionPresetsProvider.future);
+                            if (!ctx.mounted) return;
+                            final recommended = presets[row.position] ?? const <String>[];
+                            setSheetState(() {
+                              selected
+                                ..clear()
+                                ..addAll(recommended);
+                            });
+                          } on ApiException catch (e) {
+                            if (ctx.mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(e.message)));
+                            }
+                          }
+                        },
+                  icon: const Icon(Icons.auto_fix_high_outlined, size: 18),
+                  label: Text('Apply recommended for ${row.position}'),
+                ),
+              ),
+              const SizedBox(height: 4),
               FilledButton(
                 onPressed: submitting
                     ? null

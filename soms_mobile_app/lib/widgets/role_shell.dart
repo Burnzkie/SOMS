@@ -1,3 +1,4 @@
+// lib/widgets/role_shell.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,7 +8,8 @@ import '../screens/settings/settings_screen.dart';
 import 'update_dialog.dart';
 
 class RoleNavItem {
-  const RoleNavItem({required this.label, required this.icon, required this.builder});
+  const RoleNavItem(
+      {required this.label, required this.icon, required this.builder});
 
   final String label;
   final IconData icon;
@@ -53,9 +55,17 @@ class _RoleShellState extends ConsumerState<RoleShell> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(7),
-              child: Image.asset('assets/images/logo.png', width: 26, height: 26, fit: BoxFit.cover),
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(7),
+                child: Image.asset('assets/images/logo.png',
+                    width: 26, height: 26, fit: BoxFit.cover),
+              ),
             ),
             const SizedBox(width: 10),
             Text(widget.title),
@@ -82,8 +92,20 @@ class _RoleShellState extends ConsumerState<RoleShell> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-              color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-              child: Text('Signed in as ${user.name} · ${user.studentId}', style: Theme.of(context).textTheme.bodySmall),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                    bottom: BorderSide(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outlineVariant
+                            .withValues(alpha: .6))),
+              ),
+              child: Text(
+                'Signed in as ${user.name} · ${user.studentId}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
             ),
           Expanded(child: widget.items[_index].builder(context)),
         ],
@@ -92,7 +114,8 @@ class _RoleShellState extends ConsumerState<RoleShell> {
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: widget.items
-            .map((item) => NavigationDestination(icon: Icon(item.icon), label: item.label))
+            .map((item) =>
+                NavigationDestination(icon: Icon(item.icon), label: item.label))
             .toList(),
       ),
     );
@@ -104,7 +127,8 @@ class _RoleShellState extends ConsumerState<RoleShell> {
       builder: (ctx) => AlertDialog(
         title: const Text('Log out?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
@@ -133,9 +157,12 @@ class PlaceholderTab extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.construction, size: 40, color: Theme.of(context).colorScheme.outline),
+            Icon(Icons.construction,
+                size: 40, color: Theme.of(context).colorScheme.outline),
             const SizedBox(height: 12),
-            Text('$label — coming soon', style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
+            Text('$label — coming soon',
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center),
           ],
         ),
       ),

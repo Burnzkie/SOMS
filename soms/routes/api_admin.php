@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\SystemHealthController;
 use App\Http\Controllers\Api\Admin\ActivityLogController;
+use App\Http\Controllers\Api\Admin\AuditFindingController;
 use App\Http\Controllers\Api\Admin\OfficerAppointmentController;
 use App\Http\Controllers\Api\Admin\ReportController;
 use App\Http\Controllers\Api\Admin\UserController;
@@ -24,6 +25,10 @@ Route::put('/officers/{position}/permissions', [OfficerAppointmentController::cl
 
 Route::get('/reports', [ReportController::class, 'index']);
 Route::get('/activity-logs', [ActivityLogController::class, 'index']);
+
+// Audit findings reported by the Auditor -- the Admin acknowledges and resolves them.
+Route::get('/audit-findings', [AuditFindingController::class, 'index']);
+Route::post('/audit-findings/{finding}/respond', [AuditFindingController::class, 'respond']);
 
 // Same controller/method as the web /admin/system-health route -- see
 // Admin\SystemHealthController docblock.

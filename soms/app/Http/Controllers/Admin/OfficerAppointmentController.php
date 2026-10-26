@@ -55,7 +55,12 @@ class OfficerAppointmentController extends Controller {
                     'permissions' => 'nullable|array',
                     'permissions.*' => 'in:' . implode(',', array_keys(OfficerPermission::PERMISSIONS)),
                 ]);
-                $permissions = array_values($request->input('permissions', []));
+                // The appointment form has no permission checkboxes (they live on the
+                // Permissions screen), so no list means "use the recommended access for
+                // this position". An explicit list, even an empty one, is used as sent.
+                $permissions = is_array($request->input('permissions'))
+                    ? array_values($request->input('permissions'))
+                    : OfficerPermission::presetFor($request->position_title);
                 $user = User::where('id', $request->user_id)->where('is_approved', true)->firstOrFail();
                     $org = Organization::first();
 

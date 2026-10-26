@@ -16,6 +16,7 @@ use App\Models\OrganizationMember;
 use App\Models\User;
 use App\Services\QrTokenService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class FineIssuanceAndAttendanceTest extends TestCase
@@ -224,6 +225,91 @@ class FineIssuanceAndAttendanceTest extends TestCase
             'event_session_id' => $session->id,
             'violation_type' => 'missed_parade',
         ]);
+    }
+
+    // ---------------------------------------------------------------
+    // Pending / late scans and query count
+    // ---------------------------------------------------------------
+
+    /** Records a time-in scan with the given status for $member in $session. */
+    protected function recordTimeIn(EventSession $session, User $member, string $status): void
+    {
+        EventAttendance::create([
+            'event_id' => $session->eventDay->event_id,
+            'event_day_id' => $session->event_day_id,
+            'event_session_id' => $session->id,
+            'user_id' => $member->id,
+            'scan_type' => 'time_in',
+            'scanned_at' => now(),
+            'status' => $status,
+        ]);
+    }
+
+    public function test_a_scan_pending_review_is_not_fined_but_a_rejected_one_is(): void
+    {
+        $session = $this->makeMorningSession();
+        $member = $this->enrollMember($session);
+        EventFineRule::create([
+            'event_id' => $session->eventDay->event_id,
+            'violation_type' => 'missed_morning_timein',
+            'amount' => 50,
+        ]);
+
+        $this->recordTimeIn($session, $member, 'flagged_for_review');
+        IssueSessionFinesJob::dispatchSync($session->id);
+        $this->assertDatabaseMissing('fines', ['user_id' => $member->id, 'event_session_id' => $session->id]);
+
+        // An officer rejects the scan -> it becomes 'absent' and the next run fines it.
+        EventAttendance::where('user_id', $member->id)->update(['status' => 'absent']);
+        IssueSessionFinesJob::dispatchSync($session->id);
+        $this->assertDatabaseHas('fines', ['user_id' => $member->id, 'violation_type' => 'missed_morning_timein']);
+    }
+
+    public function test_a_late_scan_is_still_fined(): void
+    {
+        $session = $this->makeMorningSession();
+        $member = $this->enrollMember($session);
+        EventFineRule::create([
+            'event_id' => $session->eventDay->event_id,
+            'violation_type' => 'missed_morning_timein',
+            'amount' => 50,
+        ]);
+
+        $this->recordTimeIn($session, $member, 'late');
+        IssueSessionFinesJob::dispatchSync($session->id);
+
+        $this->assertDatabaseHas('fines', [
+            'user_id' => $member->id,
+            'event_session_id' => $session->id,
+            'violation_type' => 'missed_morning_timein',
+        ]);
+    }
+
+    /**
+     * Regression guard for the N+1 fix: attendance is read in one query per
+     * scan type, no matter how many students there are.
+     */
+    public function test_attendance_is_checked_with_one_query_not_one_per_student(): void
+    {
+        $session = $this->makeMorningSession();
+        EventFineRule::create([
+            'event_id' => $session->eventDay->event_id,
+            'violation_type' => 'missed_morning_timein',
+            'amount' => 50,
+        ]);
+
+        foreach (range(1, 15) as $ignored) {
+            $this->recordTimeIn($session, $this->enrollMember($session), 'present');
+        }
+
+        DB::enableQueryLog();
+        IssueSessionFinesJob::dispatchSync($session->id);
+        $attendanceReads = collect(DB::getQueryLog())
+            ->filter(fn (array $q) => str_contains($q['query'], 'from "event_attendance"'))
+            ->count();
+        DB::disableQueryLog();
+
+        $this->assertSame(1, $attendanceReads);
     }
 
     // ---------------------------------------------------------------

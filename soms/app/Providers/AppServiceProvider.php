@@ -10,11 +10,13 @@ use App\Policies\AttendanceSessionPolicy;
 use App\Policies\FinePolicy;
 use App\Policies\OfficerPositionPolicy;
 use App\Policies\UserPolicy;
+use App\Support\OfficerPermission;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
@@ -46,6 +48,22 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(EventSession::class, AttendanceSessionPolicy::class);
         Gate::policy(OfficerPosition::class, OfficerPositionPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
+        // The officer sidebar needs the officer's permissions on EVERY page, but
+        // only the dashboard passed them, so links vanished everywhere else (the
+        // Fines page even hid its own Fines link). Supply them centrally.
+        View::composer('partials.officer-nav', function ($view) {
+            $user = auth()->user();
+
+            if (!$user) {
+                return;
+            }
+
+            $view->with('permissions', collect(OfficerPermission::PERMISSIONS)
+                ->map(fn ($label, $key) => OfficerPermission::can($user, $key))
+                ->all());
+            $view->with('isTreasurer', OfficerPermission::isTreasurer($user));
+        });
+
         Paginator::defaultView('vendor.pagination.soms');
         Paginator::defaultSimpleView('vendor.pagination.soms');
 

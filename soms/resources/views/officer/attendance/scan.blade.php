@@ -47,6 +47,47 @@
   </div>
 </div>
 
+{{-- Offline scans flagged for device clock drift. Not fined while pending;
+     Reject marks the student absent and issues the fine. Only shown to
+     officers allowed to review (a delegate sees an empty list here). --}}
+@if($flaggedScans->isNotEmpty())
+<div class="panel">
+  <div class="panel-head">
+    <h3>Flagged scans — needs review</h3>
+    <span class="badge pending">{{ $flaggedScans->count() }} pending</span>
+  </div>
+  <p class="empty-note">These were scanned offline on a device whose clock was off by more than 10 minutes. Approve to mark the student present, or reject to mark them absent (they will be fined once the window has closed).</p>
+
+  @error('review')
+  <div class="alert alert-error" role="alert">{{ $message }}</div>
+  @enderror
+
+  @foreach($flaggedScans as $scan)
+  <div class="queue-item">
+    <div class="who">
+      <b>{{ $scan->user->name }}</b>
+      <span>{{ $scan->user->student_id }} &middot; {{ $scan->scan_type === 'time_out' ? 'Time out' : 'Time in' }}
+        &middot; device clock {{ $scan->device_scanned_at?->format('g:i A') ?? '—' }}
+        &middot; received {{ $scan->scanned_at->format('g:i A') }}</span>
+    </div>
+    <div class="queue-actions">
+      <form method="POST" action="{{ route('officer.attendance.review', $scan) }}">
+        @csrf
+        <input type="hidden" name="decision" value="approve">
+        <button type="submit" class="mini-btn approve">Approve</button>
+      </form>
+      <form method="POST" action="{{ route('officer.attendance.review', $scan) }}"
+            onsubmit="return confirm('Reject this scan? The student will be marked absent and fined.');">
+        @csrf
+        <input type="hidden" name="decision" value="reject">
+        <button type="submit" class="mini-btn reject">Reject</button>
+      </form>
+    </div>
+  </div>
+  @endforeach
+</div>
+@endif
+
 <div class="panel">
   <div class="panel-head"><h3>Live feed</h3></div>
   {{-- Roadmap Phase 3.2 -- aria-live="polite" so each new scan result is
