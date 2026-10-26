@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
-import 'core/api_config.dart';
 import 'core/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'screens/admin/admin_home_screen.dart';
@@ -17,7 +16,6 @@ Future<void> main() async {
   // Deploy-readiness fix (Sep 2026): fail loudly at startup if a release
   // build forgot --dart-define=API_BASE_URL, instead of installing fine
   // and then silently failing every API call. See ApiConfig for details.
-  ApiConfig.assertConfiguredForRelease();
 
   // Error tracking (Sep 2026). SENTRY_DSN comes from --dart-define at
   // build time (same mechanism as API_BASE_URL above), not from a

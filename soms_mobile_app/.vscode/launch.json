@@ -1,0 +1,33 @@
+// .vscode/launch.json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Uses the code default (Render). No args needed.
+      "name": "SOMS (Render)",
+      "request": "launch",
+      "type": "dart"
+    },
+    {
+      // Android emulator -> php artisan serve on the laptop
+      "name": "SOMS (Local emulator)",
+      "request": "launch",
+      "type": "dart",
+      "args": ["--dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1"]
+    },
+    {
+      // Physical phone on the laptop hotspot (check IP with ipconfig)
+      "name": "SOMS (Local hotspot)",
+      "request": "launch",
+      "type": "dart",
+      "args": ["--dart-define=API_BASE_URL=http://192.168.137.1:8000/api/v1", "--no-enable-impeller"]
+    },
+    {
+      // Release-mode test against Render
+      "name": "SOMS (Render, release)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release"
+    }
+  ]
+}
