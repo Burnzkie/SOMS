@@ -17,9 +17,7 @@ body { overflow-y: auto !important; align-items: flex-start !important; height: 
     @endif
   </p>
 
-  <a href="{{ $version->apk_url }}" class="btn btn-primary" style="text-decoration:none; margin-bottom:22px;">
-    Download APK ({{ $version->version_name }})
-  </a>
+  <a href="{{ route('download.apk', $version) }}" class="btn btn-primary" style="text-decoration:none; margin-bottom:22px;">
 
   <div style="margin:22px 0; padding-top:22px; border-top:1px solid var(--border-strong);">
     <p style="font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:12px;">

@@ -34,5 +34,7 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    // Host the APK proxy is allowed to fetch from (prevents use as an open proxy).
+    'apk' => ['host' => env('R2_APK_HOST')],
 
 ];

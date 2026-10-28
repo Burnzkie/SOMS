@@ -40,7 +40,7 @@ class AppVersionController extends Controller
             'data' => [
                 'versionCode'            => $latest->version_code,
                 'versionName'            => $latest->version_name,
-                'apkUrl'                 => $latest->apk_url,
+                'apkUrl'                 => route('download.apk', $latest),
                 'changelog'              => $latest->changelog,
                 'forceUpdate'            => $latest->force_update,
                 'minSupportedVersionCode' => $latest->min_supported_version_code,

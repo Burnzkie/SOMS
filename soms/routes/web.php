@@ -27,6 +27,7 @@ Route::get('/ping', function () {
 ]);
 
 Route::get('/download', [DownloadController::class, 'show'])->name('download');
+Route::get('/download/apk/{appVersion}', [DownloadController::class, 'apk'])->name('download.apk');
 
 Route::get('/', function (){
     return redirect()->route('login');
